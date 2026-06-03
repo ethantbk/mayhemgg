@@ -5,7 +5,7 @@ const tierStyles: Record<Tier, string> = {
   "S+": "border-volt/50 bg-volt/[0.15] text-volt",
   S: "border-frost/50 bg-frost/[0.14] text-frost",
   A: "border-arcane/50 bg-arcane/[0.16] text-violet-200",
-  B: "border-amber-300/45 bg-amber-300/[0.12] text-amber-200",
+  B: "border-amber-300/[0.45] bg-amber-300/[0.12] text-amber-200",
   C: "border-slate-400/40 bg-slate-400/10 text-slate-200"
 };
 

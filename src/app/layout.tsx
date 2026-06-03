@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-        <div className="noise fixed inset-0 -z-10 opacity-35" />
+        <div className="noise fixed inset-0 -z-10 opacity-[0.35]" />
         <Navbar />
         <main>{children}</main>
         <Footer />

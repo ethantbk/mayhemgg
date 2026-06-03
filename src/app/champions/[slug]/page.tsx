@@ -48,7 +48,7 @@ export default async function ChampionDetailsPage({ params }: { params: PagePara
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <section className="premium-border relative mb-10 overflow-hidden rounded-lg bg-panel/[0.76] p-5 shadow-card">
-        <ChampionSplash name={champion.name} className="opacity-35" />
+        <ChampionSplash name={champion.name} priority className="opacity-[0.35]" />
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-5">
             <ChampionAvatar name={champion.name} className="h-20 w-20 sm:h-24 sm:w-24" />

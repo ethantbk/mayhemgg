@@ -7,9 +7,11 @@ import { getChampionSplashUrl } from "@/lib/riotAssets";
 
 export function ChampionSplash({
   name,
+  priority = false,
   className
 }: {
   name: string;
+  priority?: boolean;
   className?: string;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -29,12 +31,12 @@ export function ChampionSplash({
         src={splashUrl}
         alt=""
         fill
-        priority
+        priority={priority}
         sizes="100vw"
         className="object-cover object-center"
         onError={() => setImageFailed(true)}
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-panel via-panel/85 to-panel/35" />
+      <div className="absolute inset-0 bg-gradient-to-r from-panel via-panel/[0.85] to-panel/[0.35]" />
       <div className="absolute inset-0 bg-gradient-to-t from-panel via-transparent to-panel/20" />
     </div>
   );

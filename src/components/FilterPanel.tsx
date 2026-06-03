@@ -30,7 +30,7 @@ export function FilterPanel({
           <select
             value={role}
             onChange={(event) => onRoleChange(event.target.value as Role | "All")}
-            className="mt-2 h-11 w-full rounded-md border border-white/10 bg-abyss px-3 text-sm font-semibold text-white outline-none focus:border-frost/45"
+            className="mt-2 h-11 w-full rounded-md border border-white/10 bg-abyss px-3 text-sm font-semibold text-white outline-none focus:border-frost/[0.45]"
           >
             {roles.map((item) => (
               <option key={item} value={item}>{item}</option>
@@ -42,7 +42,7 @@ export function FilterPanel({
           <select
             value={mode}
             onChange={(event) => onModeChange(event.target.value as Mode | "all")}
-            className="mt-2 h-11 w-full rounded-md border border-white/10 bg-abyss px-3 text-sm font-semibold text-white outline-none focus:border-frost/45"
+            className="mt-2 h-11 w-full rounded-md border border-white/10 bg-abyss px-3 text-sm font-semibold text-white outline-none focus:border-frost/[0.45]"
           >
             {modes.map((item) => (
               <option key={item} value={item}>{item === "all" ? "All Modes" : modeLabels[item]}</option>

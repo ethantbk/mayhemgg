@@ -14,7 +14,7 @@ export function AugmentCard({ augment, champions }: { augment: Augment; champion
           <h3 className="text-xl font-black text-white">{augment.name}</h3>
           <p className="mt-2 text-sm leading-6 text-slate-400">{augment.description}</p>
         </div>
-        <div className="shrink-0 rounded-md border border-volt/35 bg-volt/10 px-3 py-2 text-right">
+        <div className="shrink-0 rounded-md border border-volt/[0.35] bg-volt/10 px-3 py-2 text-right">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-volt">Avg WR</p>
           <p className="mt-1 text-xl font-black text-white">{formatPercent(augment.averageWinRate)}</p>
         </div>
@@ -27,7 +27,7 @@ export function AugmentCard({ augment, champions }: { augment: Augment; champion
           <Link
             key={champion.slug}
             href={`/champions/${champion.slug}`}
-            className="rounded-md border border-white/10 bg-white/[0.055] px-3 py-2 text-xs font-bold text-slate-200 transition hover:border-frost/35 hover:text-white"
+            className="rounded-md border border-white/10 bg-white/[0.055] px-3 py-2 text-xs font-bold text-slate-200 transition hover:border-frost/[0.35] hover:text-white"
           >
             {champion.name}
           </Link>

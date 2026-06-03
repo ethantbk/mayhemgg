@@ -17,9 +17,10 @@ html {
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 18% 0%, rgba(66, 214, 255, 0.16), transparent 28rem),
-    radial-gradient(circle at 82% 8%, rgba(255, 107, 61, 0.12), transparent 26rem),
-    linear-gradient(180deg, #070a12 0%, #0b101b 46%, #070a12 100%);
+    radial-gradient(circle at 18% -10%, rgba(66, 214, 255, 0.18), transparent 30rem),
+    radial-gradient(circle at 82% 3%, rgba(255, 107, 61, 0.13), transparent 28rem),
+    radial-gradient(circle at 50% 40%, rgba(139, 92, 246, 0.08), transparent 36rem),
+    linear-gradient(180deg, #070a12 0%, #0b101b 42%, #070a12 100%);
   color: #eef4ff;
 }
 
@@ -42,14 +43,63 @@ body {
 
 .card-hover {
   transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    background 180ms ease,
-    box-shadow 180ms ease;
+    transform 220ms ease,
+    border-color 220ms ease,
+    background 220ms ease,
+    box-shadow 220ms ease,
+    opacity 220ms ease;
 }
 
 .card-hover:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   border-color: rgba(66, 214, 255, 0.34);
   box-shadow: 0 20px 54px rgba(0, 0, 0, 0.34);
+}
+
+.glass-panel {
+  background:
+    linear-gradient(145deg, rgba(23, 31, 49, 0.82), rgba(10, 14, 24, 0.72)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent);
+}
+
+.stat-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: -40% auto -40% -45%;
+  width: 36%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  transition: left 520ms ease;
+}
+
+.shine:hover::after {
+  left: 115%;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.055));
+  background-size: 240% 100%;
+  animation: skeleton-pulse 1.45s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    background-position: 180% 0;
+  }
+
+  100% {
+    background-position: -40% 0;
+  }
 }

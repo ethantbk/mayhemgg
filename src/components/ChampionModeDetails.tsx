@@ -91,7 +91,7 @@ export function ChampionModeDetails({
           <div>
             <h2 className="text-2xl font-black text-white">{stats.brokenBuild.name}</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">{stats.brokenBuild.explanation}</p>
-            <div className="mt-4 inline-flex items-center gap-2 rounded-md border border-ember/35 bg-ember/10 px-3 py-2 text-sm font-black text-ember">
+            <div className="mt-4 inline-flex items-center gap-2 rounded-md border border-ember/[0.35] bg-ember/10 px-3 py-2 text-sm font-black text-ember">
               Broken Score {stats.brokenBuild.brokenScore}
             </div>
           </div>
@@ -109,7 +109,7 @@ export function ChampionModeDetails({
           <SectionHeader eyebrow="Augments" title="Best Augments" />
           <div className="space-y-3">
             {selectedAugments.map((augment) => (
-              <Link key={augment.id} href="/augments" className="block rounded-md border border-white/10 bg-white/[0.045] p-4 transition hover:border-frost/35">
+              <Link key={augment.id} href="/augments" className="block rounded-md border border-white/10 bg-white/[0.045] p-4 transition hover:border-frost/[0.35]">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-black text-white">{augment.name}</p>

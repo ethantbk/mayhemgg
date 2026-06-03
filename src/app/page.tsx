@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Flame, Sparkles } from "lucide-react";
-import { BuildCard } from "@/components/BuildCard";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { BrokenBuildShowcase } from "@/components/BrokenBuildShowcase";
 import { ChampionCard } from "@/components/ChampionCard";
+import { ChampionSpotlightCard } from "@/components/ChampionSpotlightCard";
 import { HeroBanner } from "@/components/HeroBanner";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getAllChampions, getAugments, getBrokenBuilds, getTopChampions } from "@/lib/data";
@@ -20,14 +21,43 @@ export default function HomePage() {
   const champions = getAllChampions();
   const arenaChampions = getTopChampions("arena", 4);
   const aramChampions = getTopChampions("aramMayhem", 4);
-  const brokenBuilds = getBrokenBuilds().slice(0, 3);
+  const brokenBuilds = getBrokenBuilds().slice(0, 4);
+  const spotlightChampions = getTopChampions("arena", 3);
   const augments = getAugments().slice(0, 4);
   const augmentNames = new Map(getAugments().map((augment) => [augment.id, augment.name]));
+  const showcasedBuilds = brokenBuilds.map((entry) => ({
+    ...entry,
+    augments: entry.augments.map((id) => augmentNames.get(id) ?? id)
+  }));
 
   return (
     <>
       <HeroBanner champions={champions} />
-      <div className="mx-auto max-w-7xl space-y-14 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-16 px-4 py-12 sm:px-6 sm:py-14 lg:px-8 lg:py-16">
+        <section>
+          <SectionHeader
+            eyebrow="Champion Spotlights"
+            title="Meta Picks Worth Locking In"
+            description="High-impact champions with strong stats, practical build paths, and broken-score pressure in the current MayhemGG mock meta."
+            action={<Link href="/champions" className="inline-flex items-center gap-2 text-sm font-black text-frost transition hover:text-white">Browse all <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}
+          />
+          <div className="grid gap-5 lg:grid-cols-3">
+            {spotlightChampions.map((champion, index) => (
+              <ChampionSpotlightCard key={champion.slug} champion={champion} mode="arena" rank={index + 1} />
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <SectionHeader
+            eyebrow="Meta Heat"
+            title="Featured Most Broken Builds"
+            description="The top broken-score setup gets the feature treatment, with the next strongest builds ranked for quick comparison."
+            action={<Link href="/broken-builds" className="inline-flex items-center gap-2 text-sm font-black text-ember transition hover:text-white">See all builds <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}
+          />
+          <BrokenBuildShowcase builds={showcasedBuilds} />
+        </section>
+
         <section>
           <SectionHeader
             eyebrow="Arena"
@@ -57,34 +87,13 @@ export default function HomePage() {
 
         <section>
           <SectionHeader
-            eyebrow="Meta Heat"
-            title="Most Broken Builds"
-            description="The highest broken-score setups in the current mock meta, ranked by oppressive item paths and augment synergy."
-            action={<Link href="/broken-builds" className="inline-flex items-center gap-2 text-sm font-black text-ember hover:text-white"><Flame className="h-4 w-4" aria-hidden="true" /> See all</Link>}
-          />
-          <div className="grid gap-5">
-            {brokenBuilds.map((entry) => (
-              <BuildCard
-                key={`${entry.champion.slug}-${entry.mode}`}
-                champion={entry.champion}
-                mode={entry.mode}
-                build={entry.build}
-                augments={entry.augments.map((id) => augmentNames.get(id) ?? id)}
-                winRate={entry.winRate}
-              />
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <SectionHeader
             eyebrow="Augments"
             title="Trending Augments"
-            description="Augments with strong average win rates and clear champion identity."
+            description="Augments with strong average win rates and clear champion identity, tuned for quick scanning."
           />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {augments.map((augment) => (
-              <Link key={augment.id} href="/augments" className="card-hover premium-border rounded-lg bg-panel/[0.78] p-5">
+              <Link key={augment.id} href="/augments" className="card-hover shine premium-border rounded-lg bg-panel/[0.78] p-5 shadow-card">
                 <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-md border border-frost/30 bg-frost/10 text-frost">
                   <Sparkles className="h-5 w-5" aria-hidden="true" />
                 </div>
