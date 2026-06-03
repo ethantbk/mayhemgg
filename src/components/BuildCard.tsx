@@ -3,6 +3,7 @@ import { Flame, Gauge } from "lucide-react";
 import type { Build, Champion, Mode } from "@/types";
 import { formatPercent, modeLabels } from "@/lib/utils";
 import { ChampionAvatar } from "@/components/ChampionAvatar";
+import { ItemPill } from "@/components/ItemPill";
 
 export function BuildCard({
   champion,
@@ -53,9 +54,7 @@ export function BuildCard({
           <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Items</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {build.fullBuild.map((item) => (
-              <span key={item.name} className="rounded-md border border-white/10 bg-white/[0.055] px-3 py-2 text-xs font-bold text-slate-200">
-                {item.name}
-              </span>
+              <ItemPill key={item.name} item={item} />
             ))}
           </div>
         </div>

@@ -19,6 +19,10 @@ npm run dev
 
 Then open `http://localhost:3000`.
 
+## Riot Assets
+
+Champion icons, splash art, and item icons are generated through `src/lib/riotAssets.ts` using Riot Data Dragon. The default Data Dragon version is `16.11.1`; set `NEXT_PUBLIC_DDRAGON_VERSION` if you want to pin a different patch.
+
 ## Project Structure
 
 ```txt

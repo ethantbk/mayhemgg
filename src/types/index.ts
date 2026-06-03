@@ -15,6 +15,7 @@ export type Difficulty = "Easy" | "Medium" | "Hard" | "Expert";
 export type Item = {
   name: string;
   category: "Starter" | "Core" | "Damage" | "Defense" | "Utility" | "Boots";
+  riotId?: number;
 };
 
 export type Build = {

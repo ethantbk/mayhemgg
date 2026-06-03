@@ -10,11 +10,7 @@ import { ChampionCard } from "@/components/ChampionCard";
 import { ModeToggle } from "@/components/ModeToggle";
 import { SectionHeader } from "@/components/SectionHeader";
 import { StatBox } from "@/components/StatBox";
-import { TierBadge } from "@/components/TierBadge";
-
-function ItemPill({ name }: { name: string }) {
-  return <span className="rounded-md border border-white/10 bg-white/[0.055] px-3 py-2 text-xs font-bold text-slate-200">{name}</span>;
-}
+import { ItemPill } from "@/components/ItemPill";
 
 function BulletList({ items, icon }: { items: string[]; icon: ReactNode }) {
   return (
@@ -71,7 +67,7 @@ export function ChampionModeDetails({
               Item Order
             </div>
             <div className="flex flex-wrap gap-2">
-              {stats.bestBuild.itemOrder.map((item) => <ItemPill key={item.name} name={item.name} />)}
+              {stats.bestBuild.itemOrder.map((item) => <ItemPill key={item.name} item={item} />)}
             </div>
           </div>
           <div className="premium-border rounded-lg bg-panel/[0.70] p-5">
@@ -80,7 +76,7 @@ export function ChampionModeDetails({
               Full Build
             </div>
             <div className="flex flex-wrap gap-2">
-              {stats.bestBuild.fullBuild.map((item) => <ItemPill key={item.name} name={item.name} />)}
+              {stats.bestBuild.fullBuild.map((item) => <ItemPill key={item.name} item={item} />)}
             </div>
           </div>
         </div>
@@ -102,7 +98,7 @@ export function ChampionModeDetails({
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Full Build</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {stats.brokenBuild.fullBuild.map((item) => <ItemPill key={item.name} name={item.name} />)}
+              {stats.brokenBuild.fullBuild.map((item) => <ItemPill key={item.name} item={item} />)}
             </div>
           </div>
         </div>
