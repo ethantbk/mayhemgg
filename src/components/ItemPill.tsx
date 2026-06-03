@@ -14,7 +14,7 @@ export function ItemPill({ item }: { item: Item }) {
   }, [iconUrl]);
 
   return (
-    <span className="inline-flex min-h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.055] px-2.5 py-2 text-xs font-bold text-slate-200">
+    <span className="row-hover inline-flex min-h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.055] px-2.5 py-2 text-xs font-bold text-slate-200">
       <span className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded border border-white/10 bg-abyss text-[10px] font-black text-slate-400">
         {iconUrl && !imageFailed ? (
           <Image

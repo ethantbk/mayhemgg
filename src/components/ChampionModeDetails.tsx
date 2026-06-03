@@ -31,7 +31,7 @@ function ModeInsightCard({ champion, mode }: { champion: Champion; mode: Mode })
   const isArena = mode === "arena";
 
   return (
-    <article className="premium-border rounded-lg bg-panel/[0.72] p-5">
+    <article className="card-hover premium-border rounded-lg bg-gradient-to-br from-panel/[0.82] to-abyss p-5 shadow-card">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-frost">{modeLabels[mode]}</p>
@@ -76,8 +76,8 @@ export function ChampionModeDetails({
     .filter((augment): augment is Augment => Boolean(augment));
 
   return (
-    <div className="space-y-10">
-      <section className="premium-border rounded-lg bg-panel/[0.72] p-5 shadow-card">
+    <div className="space-y-14">
+      <section className="premium-border rounded-lg bg-gradient-to-br from-panel/[0.88] via-panel/[0.72] to-abyss p-5 shadow-card">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.2em] text-frost">{modeLabels[mode]} snapshot</p>
@@ -87,15 +87,15 @@ export function ChampionModeDetails({
           <ModeToggle mode={mode} onChange={setMode} />
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <StatBox label="Tier" value={champion.tier} accent="text-volt" />
-          <StatBox label="Win Rate" value={formatPercent(stats.winRate)} accent="text-volt" />
+          <StatBox label="Tier" value={champion.tier} accent="text-volt" className="bg-volt/[0.08] ring-1 ring-volt/[0.18]" />
+          <StatBox label="Win Rate" value={formatPercent(stats.winRate)} accent="text-volt" className="bg-volt/[0.08] ring-1 ring-volt/[0.18]" />
           <StatBox label="Pick Rate" value={formatPercent(stats.pickRate)} accent="text-frost" />
-          <StatBox label="Broken" value={`${stats.brokenBuild.brokenScore}`} accent="text-ember" />
+          <StatBox label="Broken" value={`${stats.brokenBuild.brokenScore}`} accent="text-ember" className="bg-ember/[0.08] ring-1 ring-ember/[0.16]" />
           <StatBox label="Difficulty" value={champion.difficulty} accent="text-white" />
         </div>
       </section>
 
-      <section>
+      <section className="pt-1">
         <SectionHeader
           eyebrow="Mode Insights"
           title="How This Pick Wins Each Mode"
@@ -107,24 +107,24 @@ export function ChampionModeDetails({
         </div>
       </section>
 
-      <section>
+      <section className="pt-2">
         <SectionHeader eyebrow="Best Build" title={stats.bestBuild.name} description={stats.bestBuild.explanation} />
         <div className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
-          <div className="premium-border rounded-lg bg-panel/[0.70] p-5 shadow-card">
+          <div className="premium-border rounded-lg bg-gradient-to-br from-panel/[0.78] to-abyss p-5 shadow-card">
             <div className="mb-4 flex items-center gap-2 text-sm font-black text-white">
               <Target className="h-4 w-4 text-volt" aria-hidden="true" />
               Item Order
             </div>
             <div className="space-y-3">
               {stats.bestBuild.itemOrder.map((item, index) => (
-                <div key={item.name} className="grid grid-cols-[2rem_1fr] items-center gap-3 rounded-md border border-white/10 bg-white/[0.035] p-3">
+                <div key={item.name} className="row-hover grid grid-cols-[2rem_1fr] items-center gap-3 rounded-md border border-white/10 bg-white/[0.035] p-3">
                   <span className="text-center text-sm font-black text-slate-500">{index + 1}</span>
                   <ItemPill item={item} />
                 </div>
               ))}
             </div>
           </div>
-          <div className="premium-border rounded-lg bg-panel/[0.70] p-5 shadow-card">
+          <div className="premium-border rounded-lg bg-gradient-to-br from-panel/[0.78] to-abyss p-5 shadow-card">
             <div className="mb-4 flex items-center gap-2 text-sm font-black text-white">
               <Swords className="h-4 w-4 text-frost" aria-hidden="true" />
               Full Build
@@ -143,23 +143,25 @@ export function ChampionModeDetails({
         </div>
       </section>
 
-      <section className="premium-border relative overflow-hidden rounded-lg bg-gradient-to-br from-ember/[0.12] via-panel/[0.80] to-frost/[0.08] p-5 shadow-card">
-        <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_70%_40%,rgba(255,107,61,0.18),transparent_40%)]" />
-        <div className="relative z-10 mb-4 flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-ember">
+      <section className="premium-border feature-depth relative overflow-hidden rounded-lg bg-gradient-to-br from-ember/[0.18] via-panel/[0.88] to-frost/[0.1] p-6 sm:p-7 lg:p-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_26%,rgba(255,107,61,0.28),transparent_34%),radial-gradient(circle_at_18%_82%,rgba(66,214,255,0.12),transparent_34%)]" />
+        <div className="absolute inset-y-0 right-0 w-2/3 bg-gradient-to-l from-ember/[0.12] to-transparent" />
+        <div className="relative z-10 mb-5 flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-ember">
           <Flame className="h-5 w-5" aria-hidden="true" />
           Most Broken Build
         </div>
-        <div className="relative z-10 grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="relative z-10 grid gap-7 lg:grid-cols-[0.78fr_1.22fr]">
           <div>
-            <h2 className="text-2xl font-black text-white">{stats.brokenBuild.name}</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-300">{stats.brokenBuild.explanation}</p>
-            <div className="mt-4 inline-flex items-center gap-2 rounded-md border border-ember/[0.35] bg-ember/10 px-3 py-2 text-sm font-black text-ember">
-              Broken Score {stats.brokenBuild.brokenScore}
+            <h2 className="text-3xl font-black leading-tight text-white sm:text-4xl">{stats.brokenBuild.name}</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300 sm:text-base">{stats.brokenBuild.explanation}</p>
+            <div className="mt-6 inline-flex items-center gap-3 rounded-md border border-ember/[0.45] bg-ember/[0.14] px-4 py-3 text-sm font-black text-ember">
+              <span>Broken Score</span>
+              <span className="text-3xl text-white">{stats.brokenBuild.brokenScore}</span>
             </div>
           </div>
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Abuse Path</p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               {stats.brokenBuild.fullBuild.map((item) => <ItemPill key={item.name} item={item} />)}
             </div>
           </div>
@@ -167,7 +169,7 @@ export function ChampionModeDetails({
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="premium-border rounded-lg bg-panel/[0.72] p-5">
+        <section className="premium-border rounded-lg bg-gradient-to-br from-panel/[0.78] to-abyss p-5 shadow-card">
           <SectionHeader eyebrow="Augments" title="Best Augments" description="Prioritize augments that reinforce the selected mode's win condition." />
           <div className="space-y-3">
             {selectedAugments.map((augment) => (
@@ -190,24 +192,24 @@ export function ChampionModeDetails({
           </div>
         </section>
 
-        <section className="premium-border rounded-lg bg-panel/[0.72] p-5">
+        <section className="premium-border rounded-lg bg-gradient-to-br from-panel/[0.78] to-abyss p-5 shadow-card">
           <SectionHeader eyebrow="Items" title="Best Item Synergies" />
           <BulletList items={stats.itemSynergies} icon={<Sparkles className="h-4 w-4" aria-hidden="true" />} />
         </section>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="premium-border rounded-lg bg-panel/[0.72] p-5 shadow-card">
+        <section className="premium-border rounded-lg bg-gradient-to-br from-panel/[0.78] to-abyss p-5 shadow-card">
           <SectionHeader eyebrow="Profile" title="Strengths" />
           <BulletList items={champion.guide.strengths} icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />} />
         </section>
-        <section className="premium-border rounded-lg bg-panel/[0.72] p-5 shadow-card">
+        <section className="premium-border rounded-lg bg-gradient-to-br from-panel/[0.78] to-abyss p-5 shadow-card">
           <SectionHeader eyebrow="Profile" title="Weaknesses" />
           <BulletList items={champion.guide.weaknesses} icon={<ShieldAlert className="h-4 w-4" aria-hidden="true" />} />
         </section>
       </div>
 
-      <section className="premium-border rounded-lg bg-panel/[0.72] p-5 shadow-card">
+      <section className="premium-border rounded-lg bg-gradient-to-br from-panel/[0.8] via-panel/[0.68] to-abyss p-5 shadow-card">
         <SectionHeader eyebrow="Guide" title="Playstyle Guidance" />
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-md border border-frost/[0.2] bg-frost/[0.06] p-5">
