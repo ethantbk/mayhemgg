@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Flame, Swords } from "lucide-react";
+import { Flame } from "lucide-react";
+import { MayhemLogo } from "@/components/MayhemLogo";
 
 const navItems = [
   { href: "/champions", label: "Champions" },
@@ -12,14 +13,8 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-abyss/[0.82] backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="group flex items-center gap-3" aria-label="MayhemGG home">
-          <span className="flex h-10 w-10 items-center justify-center rounded-md border border-frost/[0.35] bg-frost/10 text-frost shadow-glow">
-            <Swords className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <span className="leading-none">
-            <span className="block text-lg font-black tracking-wide text-white">MayhemGG</span>
-            <span className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-volt">Arena Intel</span>
-          </span>
+        <Link href="/" className="flex items-center" aria-label="MayhemGG home">
+          <MayhemLogo />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Main navigation">

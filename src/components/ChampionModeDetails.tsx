@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { CheckCircle2, Flame, Lightbulb, ShieldAlert, Sparkles, Swords, Target } from "lucide-react";
+import { Activity, ArrowRight, CheckCircle2, Flame, Lightbulb, ShieldAlert, Sparkles, Swords, Target, TrendingUp, Zap } from "lucide-react";
 import type { Augment, Champion, Mode } from "@/types";
 import { formatPercent, modeLabels, modeToStatsKey } from "@/lib/utils";
 import { ChampionCard } from "@/components/ChampionCard";
@@ -11,6 +11,7 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { SectionHeader } from "@/components/SectionHeader";
 import { StatBox } from "@/components/StatBox";
 import { ItemPill } from "@/components/ItemPill";
+import { AugmentIcon } from "@/components/AugmentIcon";
 
 function BulletList({ items, icon }: { items: string[]; icon: ReactNode }) {
   return (
@@ -22,6 +23,40 @@ function BulletList({ items, icon }: { items: string[]; icon: ReactNode }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+function ModeInsightCard({ champion, mode }: { champion: Champion; mode: Mode }) {
+  const stats = champion[modeToStatsKey(mode)];
+  const isArena = mode === "arena";
+
+  return (
+    <article className="premium-border rounded-lg bg-panel/[0.72] p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-frost">{modeLabels[mode]}</p>
+          <h3 className="mt-2 text-xl font-black text-white">{isArena ? "Duel Pressure Plan" : "Bridge Control Plan"}</h3>
+        </div>
+        <span className="rounded-md border border-volt/[0.28] bg-volt/[0.08] px-3 py-2 text-sm font-black text-volt">
+          {formatPercent(stats.winRate)}
+        </span>
+      </div>
+      <p className="mt-4 text-sm leading-6 text-slate-300">
+        {isArena
+          ? `${champion.name} is strongest when the round slows down long enough to force ${stats.bestBuild.name} value. Prioritize partner spacing, first cooldown tracking, and the first takedown window.`
+          : `${champion.name} converts constant ARAM Mayhem contact into repeatable pressure. Play around wave states, health pack timing, and choke points before committing to ${stats.brokenBuild.name}.`}
+      </p>
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Pick Rate</p>
+          <p className="mt-1 text-lg font-black text-white">{formatPercent(stats.pickRate)}</p>
+        </div>
+        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Broken</p>
+          <p className="mt-1 text-lg font-black text-ember">{stats.brokenBuild.brokenScore}</p>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -42,35 +77,54 @@ export function ChampionModeDetails({
 
   return (
     <div className="space-y-10">
-      <section className="premium-border rounded-lg bg-panel/[0.72] p-5">
+      <section className="premium-border rounded-lg bg-panel/[0.72] p-5 shadow-card">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.2em] text-frost">{modeLabels[mode]} snapshot</p>
-            <h2 className="mt-2 text-2xl font-black text-white">Overview</h2>
+            <h2 className="mt-2 text-2xl font-black text-white">Mode Statistics</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Switch modes to update builds, augment recommendations, item synergies, and related champion context.</p>
           </div>
           <ModeToggle mode={mode} onChange={setMode} />
         </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatBox label="Tier" value={champion.tier} accent="text-volt" />
           <StatBox label="Win Rate" value={formatPercent(stats.winRate)} accent="text-volt" />
           <StatBox label="Pick Rate" value={formatPercent(stats.pickRate)} accent="text-frost" />
+          <StatBox label="Broken" value={`${stats.brokenBuild.brokenScore}`} accent="text-ember" />
           <StatBox label="Difficulty" value={champion.difficulty} accent="text-white" />
         </div>
       </section>
 
       <section>
+        <SectionHeader
+          eyebrow="Mode Insights"
+          title="How This Pick Wins Each Mode"
+          description="Arena and ARAM Mayhem reward different timings, spacing, and build priorities."
+        />
+        <div className="grid gap-5 lg:grid-cols-2">
+          <ModeInsightCard champion={champion} mode="arena" />
+          <ModeInsightCard champion={champion} mode="aramMayhem" />
+        </div>
+      </section>
+
+      <section>
         <SectionHeader eyebrow="Best Build" title={stats.bestBuild.name} description={stats.bestBuild.explanation} />
-        <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="premium-border rounded-lg bg-panel/[0.70] p-5">
+        <div className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
+          <div className="premium-border rounded-lg bg-panel/[0.70] p-5 shadow-card">
             <div className="mb-4 flex items-center gap-2 text-sm font-black text-white">
               <Target className="h-4 w-4 text-volt" aria-hidden="true" />
               Item Order
             </div>
-            <div className="flex flex-wrap gap-2">
-              {stats.bestBuild.itemOrder.map((item) => <ItemPill key={item.name} item={item} />)}
+            <div className="space-y-3">
+              {stats.bestBuild.itemOrder.map((item, index) => (
+                <div key={item.name} className="grid grid-cols-[2rem_1fr] items-center gap-3 rounded-md border border-white/10 bg-white/[0.035] p-3">
+                  <span className="text-center text-sm font-black text-slate-500">{index + 1}</span>
+                  <ItemPill item={item} />
+                </div>
+              ))}
             </div>
           </div>
-          <div className="premium-border rounded-lg bg-panel/[0.70] p-5">
+          <div className="premium-border rounded-lg bg-panel/[0.70] p-5 shadow-card">
             <div className="mb-4 flex items-center gap-2 text-sm font-black text-white">
               <Swords className="h-4 w-4 text-frost" aria-hidden="true" />
               Full Build
@@ -78,16 +132,24 @@ export function ChampionModeDetails({
             <div className="flex flex-wrap gap-2">
               {stats.bestBuild.fullBuild.map((item) => <ItemPill key={item.name} item={item} />)}
             </div>
+            <div className="mt-5 rounded-md border border-frost/[0.2] bg-frost/[0.06] p-4">
+              <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-frost">
+                <TrendingUp className="h-4 w-4" aria-hidden="true" />
+                Build Read
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">{stats.bestBuild.explanation}</p>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="premium-border rounded-lg bg-gradient-to-br from-ember/[0.12] via-panel/80 to-frost/[0.08] p-5">
-        <div className="mb-4 flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-ember">
+      <section className="premium-border relative overflow-hidden rounded-lg bg-gradient-to-br from-ember/[0.12] via-panel/[0.80] to-frost/[0.08] p-5 shadow-card">
+        <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_70%_40%,rgba(255,107,61,0.18),transparent_40%)]" />
+        <div className="relative z-10 mb-4 flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-ember">
           <Flame className="h-5 w-5" aria-hidden="true" />
           Most Broken Build
         </div>
-        <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="relative z-10 grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <h2 className="text-2xl font-black text-white">{stats.brokenBuild.name}</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">{stats.brokenBuild.explanation}</p>
@@ -96,7 +158,7 @@ export function ChampionModeDetails({
             </div>
           </div>
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Full Build</p>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Abuse Path</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {stats.brokenBuild.fullBuild.map((item) => <ItemPill key={item.name} item={item} />)}
             </div>
@@ -106,16 +168,22 @@ export function ChampionModeDetails({
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="premium-border rounded-lg bg-panel/[0.72] p-5">
-          <SectionHeader eyebrow="Augments" title="Best Augments" />
+          <SectionHeader eyebrow="Augments" title="Best Augments" description="Prioritize augments that reinforce the selected mode's win condition." />
           <div className="space-y-3">
             {selectedAugments.map((augment) => (
-              <Link key={augment.id} href="/augments" className="block rounded-md border border-white/10 bg-white/[0.045] p-4 transition hover:border-frost/[0.35]">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-black text-white">{augment.name}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-400">{augment.description}</p>
+              <Link key={augment.id} href="/augments" className="card-hover block rounded-md border border-white/10 bg-white/[0.045] p-4 transition hover:border-frost/[0.35]">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex gap-3">
+                    <AugmentIcon augment={augment} />
+                    <div>
+                      <p className="font-black text-white">{augment.name}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-400">{augment.description}</p>
+                    </div>
                   </div>
-                  <span className="shrink-0 text-sm font-black text-volt">{formatPercent(augment.averageWinRate)}</span>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-volt/[0.25] bg-volt/[0.08] px-2 py-1 text-sm font-black text-volt">
+                    {formatPercent(augment.averageWinRate)}
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </span>
                 </div>
               </Link>
             ))}
@@ -129,24 +197,34 @@ export function ChampionModeDetails({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="premium-border rounded-lg bg-panel/[0.72] p-5">
+        <section className="premium-border rounded-lg bg-panel/[0.72] p-5 shadow-card">
           <SectionHeader eyebrow="Profile" title="Strengths" />
           <BulletList items={champion.guide.strengths} icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />} />
         </section>
-        <section className="premium-border rounded-lg bg-panel/[0.72] p-5">
+        <section className="premium-border rounded-lg bg-panel/[0.72] p-5 shadow-card">
           <SectionHeader eyebrow="Profile" title="Weaknesses" />
           <BulletList items={champion.guide.weaknesses} icon={<ShieldAlert className="h-4 w-4" aria-hidden="true" />} />
         </section>
       </div>
 
-      <section className="premium-border rounded-lg bg-panel/[0.72] p-5">
-        <SectionHeader eyebrow="Guide" title="Playstyle Guide" />
-        <p className="text-base leading-8 text-slate-300">{champion.guide.playstyle}</p>
-      </section>
-
-      <section className="premium-border rounded-lg bg-panel/[0.72] p-5">
-        <SectionHeader eyebrow="Guide" title="Tips & Tricks" />
-        <BulletList items={champion.guide.tips} icon={<Lightbulb className="h-4 w-4" aria-hidden="true" />} />
+      <section className="premium-border rounded-lg bg-panel/[0.72] p-5 shadow-card">
+        <SectionHeader eyebrow="Guide" title="Playstyle Guidance" />
+        <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-md border border-frost/[0.2] bg-frost/[0.06] p-5">
+            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-frost">
+              <Zap className="h-4 w-4" aria-hidden="true" />
+              Core Identity
+            </p>
+            <p className="mt-3 text-base leading-8 text-slate-300">{champion.guide.playstyle}</p>
+          </div>
+          <div>
+            <p className="mb-4 flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              <Activity className="h-4 w-4 text-volt" aria-hidden="true" />
+              Tips & Tricks
+            </p>
+            <BulletList items={champion.guide.tips} icon={<Lightbulb className="h-4 w-4" aria-hidden="true" />} />
+          </div>
+        </div>
       </section>
 
       <section>

@@ -4,6 +4,7 @@ import type { Build, Champion, Mode } from "@/types";
 import { formatPercent, modeLabels } from "@/lib/utils";
 import { ChampionAvatar } from "@/components/ChampionAvatar";
 import { ItemPill } from "@/components/ItemPill";
+import { AugmentIcon } from "@/components/AugmentIcon";
 
 export function BuildCard({
   champion,
@@ -62,7 +63,8 @@ export function BuildCard({
           <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Augments</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {augments.map((augment) => (
-              <span key={augment} className="rounded-md border border-frost/20 bg-frost/[0.08] px-3 py-2 text-xs font-bold text-frost">
+              <span key={augment} className="inline-flex items-center gap-2 rounded-md border border-frost/20 bg-frost/[0.08] px-2.5 py-2 text-xs font-bold text-frost">
+                <AugmentIcon augment={augment} className="h-7 w-7 rounded" />
                 {augment}
               </span>
             ))}

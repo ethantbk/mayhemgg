@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { BrokenBuildShowcase } from "@/components/BrokenBuildShowcase";
 import { ChampionCard } from "@/components/ChampionCard";
 import { ChampionSpotlightCard } from "@/components/ChampionSpotlightCard";
 import { HeroBanner } from "@/components/HeroBanner";
 import { SectionHeader } from "@/components/SectionHeader";
+import { AugmentIcon } from "@/components/AugmentIcon";
 import { getAllChampions, getAugments, getBrokenBuilds, getTopChampions } from "@/lib/data";
 
 export const metadata: Metadata = {
@@ -94,9 +95,7 @@ export default function HomePage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {augments.map((augment) => (
               <Link key={augment.id} href="/augments" className="card-hover shine premium-border rounded-lg bg-panel/[0.78] p-5 shadow-card">
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-md border border-frost/30 bg-frost/10 text-frost">
-                  <Sparkles className="h-5 w-5" aria-hidden="true" />
-                </div>
+                <AugmentIcon augment={augment} className="mb-5 h-12 w-12" />
                 <h3 className="text-lg font-black text-white">{augment.name}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-400">{augment.description}</p>
                 <div className="mt-4 flex justify-between border-t border-white/10 pt-4 text-sm font-bold">

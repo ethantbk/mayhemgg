@@ -23,6 +23,8 @@ Then open `http://localhost:3000`.
 
 Champion icons, splash art, and item icons are generated through `src/lib/riotAssets.ts` using Riot Data Dragon. The default Data Dragon version is `16.11.1`; set `NEXT_PUBLIC_DDRAGON_VERSION` if you want to pin a different patch.
 
+Augment icons are resolved through `src/lib/augmentAssets.ts` from `/public/images/augments`. Add files with names such as `jeweled-gauntlet.png` or `bread-and-butter.png`; missing icons fall back to the MayhemGG-styled augment mark.
+
 ## Project Structure
 
 ```txt

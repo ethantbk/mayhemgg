@@ -11,6 +11,10 @@ export const metadata: Metadata = {
     template: "%s | MayhemGG"
   },
   description: "The ultimate ARAM Mayhem and Arena build database for champion rankings, broken builds, augments, item synergies, and quick guides.",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg"
+  },
   openGraph: {
     title: "MayhemGG",
     description: "ARAM Mayhem and Arena builds, tier lists, augments, and champion guides.",

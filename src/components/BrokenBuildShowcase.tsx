@@ -5,6 +5,7 @@ import { formatPercent, modeLabels } from "@/lib/utils";
 import { ChampionAvatar } from "@/components/ChampionAvatar";
 import { ChampionSplash } from "@/components/ChampionSplash";
 import { ItemPill } from "@/components/ItemPill";
+import { AugmentIcon } from "@/components/AugmentIcon";
 
 type BrokenBuildEntry = {
   champion: Champion;
@@ -51,7 +52,8 @@ export function BrokenBuildShowcase({ builds }: { builds: BrokenBuildEntry[] }) 
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
               {featured.augments.map((augment) => (
-                <span key={augment} className="rounded-md border border-frost/25 bg-frost/[0.08] px-3 py-2 text-xs font-black text-frost">
+                <span key={augment} className="inline-flex items-center gap-2 rounded-md border border-frost/25 bg-frost/[0.08] px-2.5 py-2 text-xs font-black text-frost">
+                  <AugmentIcon augment={augment} className="h-7 w-7 rounded" />
                   {augment}
                 </span>
               ))}
