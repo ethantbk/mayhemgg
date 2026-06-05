@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { isSupabasePublicConfigAvailable } from "@/lib/supabase/config";
 import { safeSupabaseQuery } from "@/lib/supabase/errors";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -54,7 +55,7 @@ async function loadActivePatch() {
   return latestPatch?.[0] ?? null;
 }
 
-export async function loadPublishedDataset(): Promise<PublishedDataset | null> {
+export const loadPublishedDataset = cache(async (): Promise<PublishedDataset | null> => {
   if (!isSupabasePublicConfigAvailable()) {
     return null;
   }
@@ -145,4 +146,4 @@ export async function loadPublishedDataset(): Promise<PublishedDataset | null> {
   } catch {
     return null;
   }
-}
+});

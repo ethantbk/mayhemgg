@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ChampionsExplorer } from "@/components/ChampionsExplorer";
 import { SectionHeader } from "@/components/SectionHeader";
-import { getAllChampions } from "@/lib/data";
+import { getChampions } from "@/server/repositories/championsRepository";
 
 export const metadata: Metadata = {
   title: "Champions",
@@ -12,7 +12,9 @@ export const metadata: Metadata = {
   }
 };
 
-export default function ChampionsPage() {
+export default async function ChampionsPage() {
+  const champions = await getChampions();
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeader
@@ -20,7 +22,7 @@ export default function ChampionsPage() {
         title="All Champions"
         description="Search the roster, filter by role and mode, and jump into focused build guides for ARAM Mayhem and Arena."
       />
-      <ChampionsExplorer champions={getAllChampions()} />
+      <ChampionsExplorer champions={champions} />
     </div>
   );
 }

@@ -134,6 +134,65 @@ function createStats({
   };
 }
 
+function createFallbackGuide(champion: DbChampion): ChampionGuide {
+  return {
+    strengths: [
+      "Current patch statistics are available from aggregated Riot match data.",
+      "Build and augment recommendations update as ingestion coverage improves."
+    ],
+    weaknesses: [
+      "Detailed matchup notes are pending editorial review.",
+      "Low sample sizes can make early-patch performance more volatile."
+    ],
+    tips: [
+      "Prioritize the highest-performing core build until more matchups are available.",
+      "Compare Arena and ARAM Mayhem stats before locking a mode-specific setup."
+    ],
+    playstyle: `${champion.name} recommendations are generated from current patch MayhemGG performance data.`
+  };
+}
+
+function findBuildForStat({
+  championId,
+  mode,
+  preferredBuildId,
+  preferredKind,
+  buildsById
+}: {
+  championId: string;
+  mode: DbGameMode;
+  preferredBuildId?: string | null;
+  preferredKind: DbBuild["kind"];
+  buildsById: Map<string, DbBuild>;
+}) {
+  const preferredBuild = preferredBuildId ? buildsById.get(preferredBuildId) : undefined;
+
+  if (preferredBuild) {
+    return preferredBuild;
+  }
+
+  const championBuilds = Array.from(buildsById.values())
+    .filter((build) => build.championId === championId && build.mode === mode)
+    .sort((a, b) => {
+      const kindDelta = Number(b.kind === preferredKind) - Number(a.kind === preferredKind);
+      if (kindDelta !== 0) return kindDelta;
+      return (b.winRate ?? 0) - (a.winRate ?? 0);
+    });
+
+  return championBuilds[0];
+}
+
+function withBrokenScore(build: Build, brokenScore?: number | null): Build {
+  if (brokenScore == null || build.brokenScore != null) {
+    return build;
+  }
+
+  return {
+    ...build,
+    brokenScore
+  };
+}
+
 export function mapDbChampion({
   champion,
   index,
@@ -151,16 +210,53 @@ export function mapDbChampion({
   buildsById: Map<string, DbBuild>;
   buildMaps: BuildRelationMaps;
 }): Champion | null {
-  if (!arenaStat || !aramStat || !guide) return null;
+  if (!arenaStat || !aramStat) return null;
 
-  const arenaBestBuild = mapDbBuild(buildsById.get(arenaStat.bestBuildId ?? ""), buildMaps);
-  const arenaBrokenBuild = mapDbBuild(buildsById.get(arenaStat.brokenBuildId ?? ""), buildMaps);
-  const aramBestBuild = mapDbBuild(buildsById.get(aramStat.bestBuildId ?? ""), buildMaps);
-  const aramBrokenBuild = mapDbBuild(buildsById.get(aramStat.brokenBuildId ?? ""), buildMaps);
+  const arenaBestDbBuild = findBuildForStat({
+    championId: champion.id,
+    mode: "arena",
+    preferredBuildId: arenaStat.bestBuildId,
+    preferredKind: "best",
+    buildsById
+  });
+  const arenaBrokenDbBuild = findBuildForStat({
+    championId: champion.id,
+    mode: "arena",
+    preferredBuildId: arenaStat.brokenBuildId ?? arenaStat.bestBuildId,
+    preferredKind: "broken",
+    buildsById
+  });
+  const aramBestDbBuild = findBuildForStat({
+    championId: champion.id,
+    mode: "aram_mayhem",
+    preferredBuildId: aramStat.bestBuildId,
+    preferredKind: "best",
+    buildsById
+  });
+  const aramBrokenDbBuild = findBuildForStat({
+    championId: champion.id,
+    mode: "aram_mayhem",
+    preferredBuildId: aramStat.brokenBuildId ?? aramStat.bestBuildId,
+    preferredKind: "broken",
+    buildsById
+  });
+  const arenaBestBuild = mapDbBuild(arenaBestDbBuild, buildMaps);
+  const arenaBrokenBuild = mapDbBuild(arenaBrokenDbBuild, buildMaps);
+  const aramBestBuild = mapDbBuild(aramBestDbBuild, buildMaps);
+  const aramBrokenBuild = mapDbBuild(aramBrokenDbBuild, buildMaps);
 
   if (!arenaBestBuild || !arenaBrokenBuild || !aramBestBuild || !aramBrokenBuild) {
     return null;
   }
+
+  const guideData = guide
+    ? {
+        strengths: guide.strengths,
+        weaknesses: guide.weaknesses,
+        tips: guide.tips,
+        playstyle: guide.playstyle
+      }
+    : createFallbackGuide(champion);
 
   return {
     id: champion.riotKey ?? index + 1,
@@ -172,22 +268,17 @@ export function mapDbChampion({
     arenaStats: createStats({
       stat: arenaStat,
       bestBuild: arenaBestBuild,
-      brokenBuild: arenaBrokenBuild,
-      augments: getAugmentSlugsForBuild(arenaStat.brokenBuildId, buildMaps),
+      brokenBuild: withBrokenScore(arenaBrokenBuild, arenaStat.brokenScore),
+      augments: getAugmentSlugsForBuild(arenaBrokenDbBuild?.id, buildMaps),
       banRate: arenaStat.banRate
     }),
     aramMayhemStats: createStats({
       stat: aramStat,
       bestBuild: aramBestBuild,
-      brokenBuild: aramBrokenBuild,
-      augments: getAugmentSlugsForBuild(aramStat.brokenBuildId, buildMaps)
+      brokenBuild: withBrokenScore(aramBrokenBuild, aramStat.brokenScore),
+      augments: getAugmentSlugsForBuild(aramBrokenDbBuild?.id, buildMaps)
     }),
-    guide: {
-      strengths: guide.strengths,
-      weaknesses: guide.weaknesses,
-      tips: guide.tips,
-      playstyle: guide.playstyle
-    } satisfies ChampionGuide
+    guide: guideData satisfies ChampionGuide
   };
 }
 

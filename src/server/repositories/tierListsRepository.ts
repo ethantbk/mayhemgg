@@ -5,7 +5,7 @@ import type { Champion, Mode, Tier } from "@/types";
 import { modeToDbMode } from "@/server/repositories/mappers";
 import { mapDatasetToChampions } from "@/server/repositories/championsRepository";
 import { loadPublishedDataset } from "@/server/repositories/publishedDataset";
-import { tierOrder } from "@/lib/utils";
+import { modeToStatsKey, tierOrder } from "@/lib/utils";
 
 function createEmptyTierList(): Record<Tier, Champion[]> {
   return tierOrder.reduce(
@@ -17,6 +17,24 @@ function createEmptyTierList(): Record<Tier, Champion[]> {
   );
 }
 
+function groupChampionsByGeneratedTier(champions: Champion[], mode: Mode): Record<Tier, Champion[]> {
+  const grouped = createEmptyTierList();
+  const statsKey = modeToStatsKey(mode);
+
+  champions
+    .filter((champion) => champion[statsKey].pickRate > 0)
+    .sort((a, b) => b[statsKey].winRate - a[statsKey].winRate)
+    .forEach((champion) => {
+      grouped[champion.tier].push(champion);
+    });
+
+  return grouped;
+}
+
+function hasTierEntries(grouped: Record<Tier, Champion[]>) {
+  return tierOrder.some((tier) => grouped[tier].length > 0);
+}
+
 export async function getChampionsByTier(mode: Mode): Promise<Record<Tier, Champion[]>> {
   const dataset = await loadPublishedDataset();
 
@@ -24,13 +42,14 @@ export async function getChampionsByTier(mode: Mode): Promise<Record<Tier, Champ
     return getMockChampionsByTier(mode);
   }
 
+  const champions = mapDatasetToChampions(dataset);
   const tierList = dataset.tierLists.find((entry) => entry.mode === modeToDbMode(mode));
 
   if (!tierList) {
-    return getMockChampionsByTier(mode);
+    const generatedGrouped = groupChampionsByGeneratedTier(champions, mode);
+    return hasTierEntries(generatedGrouped) ? generatedGrouped : getMockChampionsByTier(mode);
   }
 
-  const champions = mapDatasetToChampions(dataset);
   const championsByDbId = new Map(
     dataset.champions
       .map((dbChampion) => {
@@ -52,5 +71,10 @@ export async function getChampionsByTier(mode: Mode): Promise<Record<Tier, Champ
     }
   });
 
-  return entries.length ? grouped : getMockChampionsByTier(mode);
+  if (entries.length && hasTierEntries(grouped)) {
+    return grouped;
+  }
+
+  const generatedGrouped = groupChampionsByGeneratedTier(champions, mode);
+  return hasTierEntries(generatedGrouped) ? generatedGrouped : getMockChampionsByTier(mode);
 }

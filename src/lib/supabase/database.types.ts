@@ -13,23 +13,34 @@ import type {
   DbChampionRole,
   DbBuildKind,
   DbGameMode,
+  DbIngestionJob,
+  DbIngestionJobStatus,
   DbIngestionRun,
   DbItem,
   DbItemCategory,
   DbPatch,
   DbPatchStatus,
+  DbRiotMatch,
+  DbRiotMatchParticipant,
   DbTierList,
   DbTierListEntry,
   DbTierRank,
+  JsonValue,
   NewDbArenaChampionStatistic,
   NewDbAramMayhemChampionStatistic,
   NewDbAugment,
   NewDbAugmentStatistic,
   NewDbBuild,
+  NewDbBuildAugment,
+  NewDbBuildItem,
   NewDbChampion,
   NewDbChampionGuide,
+  NewDbIngestionJob,
+  NewDbIngestionRun,
   NewDbItem,
   NewDbPatch,
+  NewDbRiotMatch,
+  NewDbRiotMatchParticipant,
   NewDbTierList
 } from "@/types/database";
 
@@ -48,8 +59,8 @@ export type MayhemDatabase = {
       items: TableDefinition<DbItem, NewDbItem>;
       augments: TableDefinition<DbAugment, NewDbAugment>;
       builds: TableDefinition<DbBuild, NewDbBuild>;
-      build_items: TableDefinition<DbBuildItem>;
-      build_augments: TableDefinition<DbBuildAugment>;
+      build_items: TableDefinition<DbBuildItem, NewDbBuildItem>;
+      build_augments: TableDefinition<DbBuildAugment, NewDbBuildAugment>;
       arena_champion_statistics: TableDefinition<DbArenaChampionStatistic, NewDbArenaChampionStatistic>;
       aram_mayhem_champion_statistics: TableDefinition<DbAramMayhemChampionStatistic, NewDbAramMayhemChampionStatistic>;
       augment_statistics: TableDefinition<DbAugmentStatistic, NewDbAugmentStatistic>;
@@ -57,10 +68,21 @@ export type MayhemDatabase = {
       tier_lists: TableDefinition<DbTierList, NewDbTierList>;
       tier_list_entries: TableDefinition<DbTierListEntry>;
       champion_guides: TableDefinition<DbChampionGuide, NewDbChampionGuide>;
-      ingestion_runs: TableDefinition<DbIngestionRun>;
+      ingestion_runs: TableDefinition<DbIngestionRun, NewDbIngestionRun>;
+      riot_matches: TableDefinition<DbRiotMatch, NewDbRiotMatch>;
+      riot_match_participants: TableDefinition<DbRiotMatchParticipant, NewDbRiotMatchParticipant>;
+      ingestion_jobs: TableDefinition<DbIngestionJob, NewDbIngestionJob>;
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      persist_riot_match: {
+        Args: {
+          p_match: JsonValue;
+          p_participants: JsonValue;
+        };
+        Returns: string;
+      };
+    };
     Enums: {
       game_mode: DbGameMode;
       champion_role: DbChampionRole;
@@ -69,6 +91,7 @@ export type MayhemDatabase = {
       build_kind: DbBuildKind;
       item_category: DbItemCategory;
       patch_status: DbPatchStatus;
+      ingestion_job_status: DbIngestionJobStatus;
     };
     CompositeTypes: Record<string, never>;
   };

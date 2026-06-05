@@ -1,10 +1,10 @@
 import "server-only";
 
 import { getBrokenBuilds as getMockBrokenBuilds } from "@/lib/data";
-import type { Mode } from "@/types";
+import type { Champion, Mode } from "@/types";
 import { dbModeToMode, getAugmentSlugsForBuild, mapDbBuild, type BuildRelationMaps } from "@/server/repositories/mappers";
 import { mapDatasetToChampions } from "@/server/repositories/championsRepository";
-import { loadPublishedDataset } from "@/server/repositories/publishedDataset";
+import { loadPublishedDataset, type PublishedDataset } from "@/server/repositories/publishedDataset";
 import type { BrokenBuildEntry } from "@/server/repositories/types";
 
 function groupBy<T>(rows: T[], getKey: (row: T) => string) {
@@ -18,6 +18,46 @@ function groupBy<T>(rows: T[], getKey: (row: T) => string) {
   });
 
   return grouped;
+}
+
+function getStatBrokenBuilds({
+  dataset,
+  buildMaps,
+  championsBySlug,
+  dbChampionsById
+}: {
+  dataset: PublishedDataset;
+  buildMaps: BuildRelationMaps;
+  championsBySlug: Map<string, Champion>;
+  dbChampionsById: Map<string, PublishedDataset["champions"][number]>;
+}): BrokenBuildEntry[] {
+  const buildsById = new Map(dataset.builds.map((build) => [build.id, build]));
+  const statRows = [
+    ...dataset.arenaStats.map((stat) => ({ mode: "arena" as const, stat })),
+    ...dataset.aramMayhemStats.map((stat) => ({ mode: "aramMayhem" as const, stat }))
+  ];
+  const entries: BrokenBuildEntry[] = [];
+
+  statRows.forEach(({ mode: entryMode, stat }) => {
+    const dbChampion = dbChampionsById.get(stat.championId);
+    const champion = dbChampion ? championsBySlug.get(dbChampion.slug) : undefined;
+    const dbBuild = buildsById.get(stat.brokenBuildId ?? stat.bestBuildId ?? "");
+    const mappedBuild = mapDbBuild(dbBuild, buildMaps);
+
+    if (!champion || !dbBuild || !mappedBuild) {
+      return;
+    }
+
+    entries.push({
+      champion,
+      mode: entryMode,
+      build: stat.brokenScore == null ? mappedBuild : { ...mappedBuild, brokenScore: stat.brokenScore },
+      augments: getAugmentSlugsForBuild(dbBuild.id, buildMaps),
+      winRate: dbBuild.winRate ?? stat.winRate
+    });
+  });
+
+  return entries;
 }
 
 export async function getBrokenBuilds(mode?: Mode): Promise<BrokenBuildEntry[]> {
@@ -39,7 +79,7 @@ export async function getBrokenBuilds(mode?: Mode): Promise<BrokenBuildEntry[]> 
     augmentsById: new Map(dataset.augments.map((augment) => [augment.id, augment]))
   };
 
-  const brokenBuilds = dataset.builds
+  const explicitBrokenBuilds = dataset.builds
     .filter((build) => build.kind === "broken")
     .map((build) => {
       const dbChampion = dbChampionsById.get(build.championId);
@@ -62,7 +102,26 @@ export async function getBrokenBuilds(mode?: Mode): Promise<BrokenBuildEntry[]> 
         winRate: build.winRate ?? stats.winRate
       } satisfies BrokenBuildEntry;
     })
-    .filter((entry): entry is BrokenBuildEntry => Boolean(entry))
+    .filter((entry): entry is BrokenBuildEntry => Boolean(entry));
+
+  const statBrokenBuilds = getStatBrokenBuilds({
+    dataset,
+    buildMaps,
+    championsBySlug,
+    dbChampionsById
+  });
+  const dedupedBrokenBuilds = new Map<string, BrokenBuildEntry>();
+
+  [...explicitBrokenBuilds, ...statBrokenBuilds].forEach((entry) => {
+    const key = `${entry.champion.slug}-${entry.mode}-${entry.build.name}`;
+    const existing = dedupedBrokenBuilds.get(key);
+
+    if (!existing || (entry.build.brokenScore ?? 0) > (existing.build.brokenScore ?? 0)) {
+      dedupedBrokenBuilds.set(key, entry);
+    }
+  });
+
+  const brokenBuilds = Array.from(dedupedBrokenBuilds.values())
     .filter((entry) => (mode ? entry.mode === mode : true))
     .sort((a, b) => (b.build.brokenScore ?? 0) - (a.build.brokenScore ?? 0));
 

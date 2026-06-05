@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
-import { getAllChampions } from "@/lib/data";
+import { getChampions } from "@/server/repositories/championsRepository";
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://mayhemgg.com").replace(/\/$/, "");
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = ["", "/champions", "/tier-list", "/broken-builds", "/augments"];
   const now = new Date();
+  const champions = await getChampions();
 
   const staticEntries = staticRoutes.map((route) => ({
     url: `${siteUrl}${route}`,
@@ -14,7 +15,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: route === "" ? 1 : 0.8
   })) satisfies MetadataRoute.Sitemap;
 
-  const championEntries = getAllChampions().map((champion) => ({
+  const championEntries = champions.map((champion) => ({
     url: `${siteUrl}/champions/${champion.slug}`,
     lastModified: now,
     changeFrequency: "weekly",

@@ -7,7 +7,9 @@ import { ChampionSpotlightCard } from "@/components/ChampionSpotlightCard";
 import { HeroBanner } from "@/components/HeroBanner";
 import { SectionHeader } from "@/components/SectionHeader";
 import { AugmentIcon } from "@/components/AugmentIcon";
-import { getAllChampions, getAugments, getBrokenBuilds, getTopChampions } from "@/lib/data";
+import { getAugments } from "@/server/repositories/augmentsRepository";
+import { getBrokenBuilds } from "@/server/repositories/buildsRepository";
+import { getChampions, getTopChampions } from "@/server/repositories/championsRepository";
 
 export const metadata: Metadata = {
   title: "MayhemGG | ARAM Mayhem and Arena Builds",
@@ -18,14 +20,18 @@ export const metadata: Metadata = {
   }
 };
 
-export default function HomePage() {
-  const champions = getAllChampions();
-  const arenaChampions = getTopChampions("arena", 4);
-  const aramChampions = getTopChampions("aramMayhem", 4);
-  const brokenBuilds = getBrokenBuilds().slice(0, 4);
-  const spotlightChampions = getTopChampions("arena", 3);
-  const augments = getAugments().slice(0, 4);
-  const augmentNames = new Map(getAugments().map((augment) => [augment.id, augment.name]));
+export default async function HomePage() {
+  const [champions, arenaChampions, aramChampions, brokenBuildsRaw, spotlightChampions, augmentsRaw] = await Promise.all([
+    getChampions(),
+    getTopChampions("arena", 4),
+    getTopChampions("aramMayhem", 4),
+    getBrokenBuilds(),
+    getTopChampions("arena", 3),
+    getAugments()
+  ]);
+  const brokenBuilds = brokenBuildsRaw.slice(0, 4);
+  const augments = augmentsRaw.slice(0, 4);
+  const augmentNames = new Map(augmentsRaw.map((augment) => [augment.id, augment.name]));
   const showcasedBuilds = brokenBuilds.map((entry) => ({
     ...entry,
     augments: entry.augments.map((id) => augmentNames.get(id) ?? id)
@@ -39,7 +45,7 @@ export default function HomePage() {
           <SectionHeader
             eyebrow="Champion Spotlights"
             title="Meta Picks Worth Locking In"
-            description="High-impact champions with strong stats, practical build paths, and broken-score pressure in the current MayhemGG mock meta."
+            description="High-impact champions with strong stats, practical build paths, and broken-score pressure in the current MayhemGG meta."
             action={<Link href="/champions" className="inline-flex items-center gap-2 text-sm font-black text-frost transition hover:text-white">Browse all <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}
           />
           <div className="grid gap-5 lg:grid-cols-3">

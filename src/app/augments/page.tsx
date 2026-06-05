@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { AugmentCard } from "@/components/AugmentCard";
 import { SectionHeader } from "@/components/SectionHeader";
-import { getAllChampions, getAugments } from "@/lib/data";
+import { getAugments } from "@/server/repositories/augmentsRepository";
+import { getChampions } from "@/server/repositories/championsRepository";
 
 export const metadata: Metadata = {
   title: "Augments",
@@ -12,9 +13,9 @@ export const metadata: Metadata = {
   }
 };
 
-export default function AugmentsPage() {
-  const champions = getAllChampions();
-  const augments = getAugments().sort((a, b) => b.averageWinRate - a.averageWinRate);
+export default async function AugmentsPage() {
+  const [champions, augmentsRaw] = await Promise.all([getChampions(), getAugments()]);
+  const augments = augmentsRaw.sort((a, b) => b.averageWinRate - a.averageWinRate);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">

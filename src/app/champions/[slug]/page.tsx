@@ -6,19 +6,21 @@ import { ChampionModeDetails } from "@/components/ChampionModeDetails";
 import { ChampionSplash } from "@/components/ChampionSplash";
 import { StatBox } from "@/components/StatBox";
 import { TierBadge } from "@/components/TierBadge";
-import { getAllChampions, getAugments, getChampionBySlug, getRelatedChampions } from "@/lib/data";
 import { getPatchLabel } from "@/lib/patchConfig";
 import { formatPercent } from "@/lib/utils";
+import { getAugments } from "@/server/repositories/augmentsRepository";
+import { getChampions, getChampionBySlug, getRelatedChampions } from "@/server/repositories/championsRepository";
 
 type PageParams = Promise<{ slug: string }>;
 
-export function generateStaticParams() {
-  return getAllChampions().map((champion) => ({ slug: champion.slug }));
+export async function generateStaticParams() {
+  const champions = await getChampions();
+  return champions.map((champion) => ({ slug: champion.slug }));
 }
 
 export async function generateMetadata({ params }: { params: PageParams }): Promise<Metadata> {
   const { slug } = await params;
-  const champion = getChampionBySlug(slug);
+  const champion = await getChampionBySlug(slug);
 
   if (!champion) {
     return {
@@ -39,13 +41,13 @@ export async function generateMetadata({ params }: { params: PageParams }): Prom
 
 export default async function ChampionDetailsPage({ params }: { params: PageParams }) {
   const { slug } = await params;
-  const champion = getChampionBySlug(slug);
+  const [champion, augments] = await Promise.all([getChampionBySlug(slug), getAugments()]);
 
   if (!champion) {
     notFound();
   }
 
-  const relatedChampions = getRelatedChampions(champion);
+  const relatedChampions = await getRelatedChampions(champion);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
@@ -119,7 +121,7 @@ export default async function ChampionDetailsPage({ params }: { params: PagePara
         </div>
       </section>
 
-      <ChampionModeDetails champion={champion} augments={getAugments()} relatedChampions={relatedChampions} />
+      <ChampionModeDetails champion={champion} augments={augments} relatedChampions={relatedChampions} />
     </div>
   );
 }

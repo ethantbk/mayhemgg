@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { SectionHeader } from "@/components/SectionHeader";
 import { TierListClient } from "@/components/TierListClient";
-import { getChampionsByTier } from "@/lib/data";
 import { getPatchLabel } from "@/lib/patchConfig";
+import { getChampionsByTier } from "@/server/repositories/tierListsRepository";
 
 export const metadata: Metadata = {
   title: "Tier List",
@@ -13,15 +13,20 @@ export const metadata: Metadata = {
   }
 };
 
-export default function TierListPage() {
+export default async function TierListPage() {
+  const [arenaChampionsByTier, aramChampionsByTier] = await Promise.all([
+    getChampionsByTier("arena"),
+    getChampionsByTier("aramMayhem")
+  ]);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeader
         eyebrow={`Rankings | ${getPatchLabel()}`}
         title="Champion Tier List"
-        description="Mode-specific champion groups based on mock win rate, pick rate, build strength, and practical reliability."
+        description="Mode-specific champion groups based on win rate, pick rate, build strength, and practical reliability."
       />
-      <TierListClient championsByMode={{ arena: getChampionsByTier("arena"), aramMayhem: getChampionsByTier("aramMayhem") }} />
+      <TierListClient championsByMode={{ arena: arenaChampionsByTier, aramMayhem: aramChampionsByTier }} />
     </div>
   );
 }

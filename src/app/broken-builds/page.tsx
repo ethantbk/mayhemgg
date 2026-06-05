@@ -1,21 +1,22 @@
 import type { Metadata } from "next";
 import { BuildCard } from "@/components/BuildCard";
 import { SectionHeader } from "@/components/SectionHeader";
-import { getAugments, getBrokenBuilds } from "@/lib/data";
 import { getPatchLabel } from "@/lib/patchConfig";
+import { getAugments } from "@/server/repositories/augmentsRepository";
+import { getBrokenBuilds } from "@/server/repositories/buildsRepository";
 
 export const metadata: Metadata = {
   title: "Broken Builds",
   description: "Ranked ARAM Mayhem and Arena broken builds by champion, mode, broken score, win rate, augments, items, and explanation.",
   openGraph: {
     title: "MayhemGG Broken Builds",
-    description: "The strongest mock-meta builds ranked by broken score."
+    description: "The strongest current-patch builds ranked by broken score."
   }
 };
 
-export default function BrokenBuildsPage() {
-  const augmentNames = new Map(getAugments().map((augment) => [augment.id, augment.name]));
-  const builds = getBrokenBuilds();
+export default async function BrokenBuildsPage() {
+  const [augments, builds] = await Promise.all([getAugments(), getBrokenBuilds()]);
+  const augmentNames = new Map(augments.map((augment) => [augment.id, augment.name]));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
