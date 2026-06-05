@@ -7,6 +7,7 @@ import { ChampionSplash } from "@/components/ChampionSplash";
 import { StatBox } from "@/components/StatBox";
 import { TierBadge } from "@/components/TierBadge";
 import { getAllChampions, getAugments, getChampionBySlug, getRelatedChampions } from "@/lib/data";
+import { getPatchLabel } from "@/lib/patchConfig";
 import { formatPercent } from "@/lib/utils";
 
 type PageParams = Promise<{ slug: string }>;
@@ -59,18 +60,21 @@ export default async function ChampionDetailsPage({ params }: { params: PagePara
               <ChampionAvatar name={champion.name} className="h-24 w-24 ring-4 ring-frost/[0.16] sm:h-32 sm:w-32" />
               <div>
                 <div className="mb-3 flex flex-wrap items-center gap-3">
-                <TierBadge tier={champion.tier} />
-                <span className="rounded-md border border-white/10 bg-white/[0.055] px-2 py-1 text-xs font-black uppercase tracking-[0.14em] text-slate-300">
-                  {champion.role}
-                </span>
-                <span className="rounded-md border border-frost/[0.28] bg-frost/[0.08] px-2 py-1 text-xs font-black uppercase tracking-[0.14em] text-frost">
-                  {champion.difficulty}
-                </span>
-              </div>
+                  <TierBadge tier={champion.tier} />
+                  <span className="rounded-md border border-frost/[0.28] bg-frost/[0.08] px-2 py-1 text-xs font-black uppercase tracking-[0.14em] text-frost">
+                    {getPatchLabel()}
+                  </span>
+                  <span className="rounded-md border border-white/10 bg-white/[0.055] px-2 py-1 text-xs font-black uppercase tracking-[0.14em] text-slate-300">
+                    {champion.role}
+                  </span>
+                  <span className="rounded-md border border-frost/[0.28] bg-frost/[0.08] px-2 py-1 text-xs font-black uppercase tracking-[0.14em] text-frost">
+                    {champion.difficulty}
+                  </span>
+                </div>
                 <h1 className="text-6xl font-black leading-none tracking-tight text-white sm:text-7xl lg:text-8xl">{champion.name}</h1>
                 <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-slate-200 sm:text-lg">
-                {champion.arenaStats.bestBuild.name} in Arena, {champion.aramMayhemStats.bestBuild.name} in ARAM Mayhem
-              </p>
+                  {champion.arenaStats.bestBuild.name} in Arena, {champion.aramMayhemStats.bestBuild.name} in ARAM Mayhem
+                </p>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400">{champion.guide.playstyle}</p>
               </div>
             </div>

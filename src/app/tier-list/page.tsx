@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SectionHeader } from "@/components/SectionHeader";
 import { TierListClient } from "@/components/TierListClient";
 import { getChampionsByTier } from "@/lib/data";
+import { getPatchLabel } from "@/lib/patchConfig";
 
 export const metadata: Metadata = {
   title: "Tier List",
@@ -16,7 +17,7 @@ export default function TierListPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeader
-        eyebrow="Rankings"
+        eyebrow={`Rankings | ${getPatchLabel()}`}
         title="Champion Tier List"
         description="Mode-specific champion groups based on mock win rate, pick rate, build strength, and practical reliability."
       />

@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { CurrentPatchBanner } from "@/components/CurrentPatchBanner";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import "./globals.css";
 
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://mayhemgg.com").replace(/\/$/, "");
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mayhemgg.local"),
+  metadataBase: new URL(siteUrl),
   title: {
     default: "MayhemGG | ARAM Mayhem and Arena Builds",
     template: "%s | MayhemGG"
@@ -18,6 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "MayhemGG",
     description: "ARAM Mayhem and Arena builds, tier lists, augments, and champion guides.",
+    url: siteUrl,
     siteName: "MayhemGG",
     type: "website"
   }
@@ -33,6 +37,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <div className="noise fixed inset-0 -z-10 opacity-[0.35]" />
         <Navbar />
+        <CurrentPatchBanner />
         <main>{children}</main>
         <Footer />
       </body>

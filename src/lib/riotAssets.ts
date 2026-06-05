@@ -1,9 +1,9 @@
 import type { Champion, Item } from "@/types";
+import { currentPatch } from "@/lib/patchConfig";
 
 const DATA_DRAGON_BASE_URL = "https://ddragon.leagueoflegends.com";
 
-export const DATA_DRAGON_VERSION =
-  process.env.NEXT_PUBLIC_DDRAGON_VERSION ?? "16.11.1";
+export const DATA_DRAGON_VERSION = currentPatch.dataDragonVersion;
 
 type ChampionAssetSource = Pick<Champion, "name" | "slug"> | string;
 type ItemAssetSource = Pick<Item, "name" | "riotId"> | string;

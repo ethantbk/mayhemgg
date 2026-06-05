@@ -6,7 +6,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { modeToStatsKey } from "@/lib/utils";
 import { ChampionCard } from "@/components/ChampionCard";
 import { FilterPanel } from "@/components/FilterPanel";
-import { SearchBar } from "@/components/SearchBar";
+import { ChampionSearchAutocomplete } from "@/components/ChampionSearchAutocomplete";
 
 export function ChampionsExplorer({ champions }: { champions: Champion[] }) {
   const [query, setQuery] = useState("");
@@ -39,7 +39,13 @@ export function ChampionsExplorer({ champions }: { champions: Champion[] }) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[1fr_28rem]">
-        <SearchBar value={query} onChange={setQuery} placeholder="Search by champion or role..." />
+        <ChampionSearchAutocomplete
+          champions={champions}
+          value={query}
+          onQueryChange={setQuery}
+          placeholder="Search by champion or role..."
+          maxResults={8}
+        />
         <FilterPanel role={role} mode={mode} onRoleChange={setRole} onModeChange={setMode} />
       </div>
       <div className="flex items-center justify-between">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BuildCard } from "@/components/BuildCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getAugments, getBrokenBuilds } from "@/lib/data";
+import { getPatchLabel } from "@/lib/patchConfig";
 
 export const metadata: Metadata = {
   title: "Broken Builds",
@@ -19,7 +20,7 @@ export default function BrokenBuildsPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeader
-        eyebrow="Meta Heat"
+        eyebrow={`Meta Heat | ${getPatchLabel()}`}
         title="Broken Builds"
         description="Ranked strongest-first by broken score, combining win rate, augment abuse, item synergy, and mode-specific reliability."
       />

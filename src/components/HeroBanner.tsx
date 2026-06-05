@@ -1,24 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Flame, Search, Sparkles, Trophy } from "lucide-react";
+import { ArrowRight, Flame, Sparkles, Trophy } from "lucide-react";
 import type { Champion } from "@/types";
-import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { getPatchLabel } from "@/lib/patchConfig";
 import { ChampionAvatar } from "@/components/ChampionAvatar";
+import { ChampionSearchAutocomplete } from "@/components/ChampionSearchAutocomplete";
 
 export function HeroBanner({ champions }: { champions: Champion[] }) {
-  const [query, setQuery] = useState("");
-  const debouncedQuery = useDebouncedValue(query);
-
-  const matches = useMemo(() => {
-    const normalized = debouncedQuery.trim().toLowerCase();
-    if (!normalized) return champions.slice(0, 5);
-    return champions
-      .filter((champion) => champion.name.toLowerCase().includes(normalized) || champion.role.toLowerCase().includes(normalized))
-      .slice(0, 5);
-  }, [champions, debouncedQuery]);
-
   return (
     <section className="relative overflow-hidden border-b border-white/10">
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(135deg,rgba(66,214,255,0.18),transparent_32%),linear-gradient(45deg,rgba(255,107,61,0.12),transparent_36%),radial-gradient(circle_at_50%_18%,rgba(184,255,75,0.1),transparent_34%)]" />
@@ -27,7 +16,7 @@ export function HeroBanner({ champions }: { champions: Champion[] }) {
         <div>
           <div className="inline-flex items-center gap-2 rounded-md border border-volt/30 bg-volt/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-volt">
             <Sparkles className="h-4 w-4" aria-hidden="true" />
-            Patch-ready mock meta
+            {getPatchLabel()} mock meta
           </div>
           <h1 className="mt-6 max-w-4xl text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-7xl">
             MayhemGG
@@ -40,28 +29,12 @@ export function HeroBanner({ champions }: { champions: Champion[] }) {
           </p>
 
           <div className="mt-8 max-w-2xl">
-            <label className="relative block">
-              <span className="sr-only">Search champions</span>
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search Jinx, Brand, Arena tanks..."
-                className="h-14 w-full rounded-md border border-white/[0.12] bg-abyss/[0.72] pl-12 pr-4 text-base font-bold text-white shadow-card outline-none transition placeholder:text-slate-500 focus:border-frost/[0.55] focus:ring-4 focus:ring-frost/10"
-              />
-            </label>
-            <div className="mt-3 grid gap-2 sm:grid-cols-5">
-              {matches.map((champion) => (
-                <Link
-                  key={champion.slug}
-                  href={`/champions/${champion.slug}`}
-                  className="inline-flex items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.055] px-3 py-2 text-center text-xs font-black text-slate-200 transition hover:-translate-y-0.5 hover:border-frost/[0.45] hover:bg-white/[0.08] hover:text-white"
-                >
-                  <ChampionAvatar name={champion.name} className="h-5 w-5 text-[9px]" />
-                  {champion.name}
-                </Link>
-              ))}
-            </div>
+            <ChampionSearchAutocomplete
+              champions={champions}
+              placeholder="Search Jinx, Brand, Arena tanks..."
+              maxResults={7}
+              inputClassName="h-14 border-white/[0.12] bg-abyss/[0.72] text-base font-bold shadow-card focus:border-frost/[0.55]"
+            />
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">

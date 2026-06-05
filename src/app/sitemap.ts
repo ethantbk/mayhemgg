@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getAllChampions } from "@/lib/data";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mayhemgg.com";
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://mayhemgg.com").replace(/\/$/, "");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = ["", "/champions", "/tier-list", "/broken-builds", "/augments"];

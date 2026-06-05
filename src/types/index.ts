@@ -65,3 +65,5 @@ export type Champion = {
 };
 
 export type ModeStatsKey = "arenaStats" | "aramMayhemStats";
+
+export * from "./database";

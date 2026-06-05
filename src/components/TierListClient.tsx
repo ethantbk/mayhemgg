@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, TrendingUp } from "lucide-react";
 import type { Champion, Mode, Tier } from "@/types";
+import { getPatchLabel } from "@/lib/patchConfig";
 import { formatPercent, modeToStatsKey, tierOrder } from "@/lib/utils";
 import { ChampionAvatar } from "@/components/ChampionAvatar";
 import { ModeToggle } from "@/components/ModeToggle";
@@ -20,7 +21,12 @@ export function TierListClient({ championsByMode }: { championsByMode: Record<Mo
           <p className="text-xs font-black uppercase tracking-[0.2em] text-volt">Mode Ranking</p>
           <p className="mt-1 text-sm font-semibold text-slate-400">Switch modes to compare win-rate leaders and meta reliability.</p>
         </div>
-        <ModeToggle mode={mode} onChange={setMode} />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <span className="inline-flex rounded-md border border-frost/25 bg-frost/[0.08] px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-frost">
+            {getPatchLabel()}
+          </span>
+          <ModeToggle mode={mode} onChange={setMode} />
+        </div>
       </div>
       {tierOrder.map((tier) => (
         <section key={tier} className="premium-border overflow-hidden rounded-lg bg-panel/[0.72] shadow-card">
