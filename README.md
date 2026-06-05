@@ -34,6 +34,22 @@ NEXT_PUBLIC_PATCH_DATA_SOURCE_LABEL="Data Dragon-ready dataset"
 
 Augment icons are resolved through `src/lib/augmentAssets.ts` from `/public/images/augments`. Add files with names such as `jeweled-gauntlet.png` or `bread-and-butter.png`; missing icons fall back to the MayhemGG-styled augment mark.
 
+## Supabase Foundation
+
+Supabase is installed and prepared for incremental database reads, but the app still uses mock data. The typed client foundation lives in `src/lib/supabase`.
+
+Required variables when you start using Supabase:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+Use `src/lib/supabase/client.ts` from client components and `src/lib/supabase/server.ts` from server code. Shared result/error helpers live in `src/lib/supabase/errors.ts`.
+
+Server-side repository functions live in `src/server/repositories`. They expose typed champion, build, augment, and tier-list reads with mock-data fallback, so real Supabase queries can be introduced route by route without changing the UI components.
+
 ## Project Structure
 
 ```txt
