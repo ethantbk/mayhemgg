@@ -12,7 +12,10 @@ function isAuthorized(request: NextRequest) {
     return true;
   }
 
-  return Boolean(verifySecret && request.headers.get("x-riot-verify-secret") === verifySecret);
+  const headerSecret = request.headers.get("x-riot-verify-secret");
+  const querySecret = request.nextUrl.searchParams.get("secret");
+
+  return Boolean(verifySecret && (headerSecret === verifySecret || querySecret === verifySecret));
 }
 
 export async function GET(request: NextRequest) {
