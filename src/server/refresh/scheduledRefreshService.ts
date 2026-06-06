@@ -95,6 +95,13 @@ export class ScheduledRefreshService {
     const patch = await this.resolvePatch(input);
     const modes = input.modes?.length ? input.modes : undefined;
     const resolvedModes = modes ?? ["arena", "aram_mayhem"];
+    const seedPuuids = parseSeedPuuids();
+
+    this.logger.info("Loaded RIOT_REFRESH_PUUIDS for daily refresh.", {
+      seedPuuidCount: seedPuuids.length,
+      seedPuuids: seedPuuids.join(","),
+      modes: resolvedModes.join(",")
+    });
 
     return this.runPipeline("daily", patch, {
       ...input,

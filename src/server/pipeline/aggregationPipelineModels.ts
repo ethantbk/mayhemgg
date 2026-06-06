@@ -40,6 +40,32 @@ export type RunAggregationPipelineInput = {
 
 export type MatchIngestionPipelineResult = {
   discoveryResults: MatchDiscoveryJobResult[];
+  debug: {
+    seedPuuidCount: number;
+    seedPuuids: string[];
+    discoveryQueries: Array<{
+      puuid: string;
+      queueId: number;
+      regionalRouting?: RiotRegionalRouting;
+      startTime?: number;
+      endTime?: number;
+      start?: number;
+      count?: number;
+      matchIdsReturned: string[];
+      matchCount: number;
+    }>;
+    fetchedMatches: Array<{
+      riotMatchId: string;
+      queueId: number;
+      mode: string;
+      participantsPersisted: number;
+    }>;
+    skippedMatches: Array<{
+      riotMatchId?: string;
+      reason: string;
+      error?: string;
+    }>;
+  };
   matchIdsDiscovered: number;
   matchIdsRequested: number;
   matchesAttempted: number;

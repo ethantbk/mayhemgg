@@ -59,6 +59,10 @@ function uniqueValues(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function uniqueDiscoveryPuuids(sources: AggregationPipelineMatchDiscoverySource[] = []) {
+  return uniqueValues(sources.map((source) => source.puuid));
+}
+
 function pipelineJobId(patchId: string) {
   return `aggregation-pipeline:${patchId}`;
 }
@@ -98,7 +102,8 @@ function resultMetadata(result: AggregationPipelineResult): JsonValue {
       matchesAttempted: result.matchIngestion.matchesAttempted,
       matchesPersisted: result.matchIngestion.matchesPersisted,
       participantsPersisted: result.matchIngestion.participantsPersisted,
-      failedMatches: result.matchIngestion.failedMatches.length
+      failedMatches: result.matchIngestion.failedMatches.length,
+      debug: result.matchIngestion.debug
     },
     championId: result.championId ?? null,
     championAggregation: result.phases.championAggregation.map((entry) => ({
@@ -328,10 +333,21 @@ export class AggregationPipelineRunner {
     });
 
     try {
+      const discoverySources = input.matchIngestion?.discoverySources ?? [];
+      const seedPuuids = uniqueDiscoveryPuuids(discoverySources);
       const discoveryResults = [];
       const discoveredMatchIds: string[] = [];
 
-      for (const [index, source] of (input.matchIngestion?.discoverySources ?? []).entries()) {
+      this.logger.info("Prepared match ingestion discovery sources.", {
+        parentJobId,
+        patchId,
+        seedPuuidCount: seedPuuids.length,
+        seedPuuids: seedPuuids.join(","),
+        discoverySourceCount: discoverySources.length,
+        regionalRouting: input.matchIngestion?.regionalRouting
+      });
+
+      for (const [index, source] of discoverySources.entries()) {
         const result = await this.runDiscoveryJob({
           parentJobId,
           patchId,
@@ -352,12 +368,21 @@ export class AggregationPipelineRunner {
         : requestedMatchIds;
       const persistedMatches = [];
       const failedMatches: MatchIngestionPipelineResult["failedMatches"] = [];
+      const skippedMatches: MatchIngestionPipelineResult["debug"]["skippedMatches"] = [];
       let participantsPersisted = 0;
 
       if (!limitedMatchIds.length) {
+        const reason = discoverySources.length
+          ? "Riot Match-V5 returned zero match IDs for the configured PUUID, queue, and time-window filters."
+          : "No match ingestion discovery sources or explicit match IDs were provided. Use kind=daily or provide matchIngestion.matchIds.";
+
+        skippedMatches.push({ reason });
         this.logger.warn("Match ingestion phase has no match IDs to process.", {
           parentJobId,
-          patchId
+          patchId,
+          seedPuuidCount: seedPuuids.length,
+          discoverySourceCount: discoverySources.length,
+          reason
         });
       }
 
@@ -378,6 +403,11 @@ export class AggregationPipelineRunner {
             riotMatchId,
             error: errorMessage(error)
           });
+          skippedMatches.push({
+            riotMatchId,
+            reason: "Match fetch or persistence failed.",
+            error: errorMessage(error)
+          });
 
           if (!input.matchIngestion?.continueOnMatchError) {
             throw error;
@@ -387,6 +417,28 @@ export class AggregationPipelineRunner {
 
       const result = {
         discoveryResults,
+        debug: {
+          seedPuuidCount: seedPuuids.length,
+          seedPuuids,
+          discoveryQueries: discoveryResults.map((entry) => ({
+            puuid: entry.puuid,
+            queueId: entry.queueId,
+            regionalRouting: entry.regionalRouting,
+            startTime: entry.startTime,
+            endTime: entry.endTime,
+            start: entry.start,
+            count: entry.count,
+            matchIdsReturned: entry.matchIds,
+            matchCount: entry.matchIds.length
+          })),
+          fetchedMatches: persistedMatches.map((entry) => ({
+            riotMatchId: entry.riotMatchId,
+            queueId: entry.queueId,
+            mode: entry.mode,
+            participantsPersisted: entry.participantsPersisted
+          })),
+          skippedMatches
+        },
         matchIdsDiscovered: discoveredMatchIds.length,
         matchIdsRequested: requestedMatchIds.length,
         matchesAttempted: limitedMatchIds.length,
@@ -407,7 +459,8 @@ export class AggregationPipelineRunner {
           matchesAttempted: result.matchesAttempted,
           matchesPersisted: result.matchesPersisted,
           participantsPersisted: result.participantsPersisted,
-          failedMatches: result.failedMatches.length
+          failedMatches: result.failedMatches.length,
+          debug: result.debug
         })
       });
 
@@ -457,11 +510,26 @@ export class AggregationPipelineRunner {
     try {
       const result = await this.matchIngestionService.fetchMatchIdsByQueue(job);
 
+      this.logger.info("Riot Match-V5 discovery returned match IDs.", {
+        jobId: job.jobId,
+        puuid: job.puuid,
+        queueId: job.queueId,
+        regionalRouting: result.regionalRouting,
+        matchCount: result.matchIds.length,
+        matchIds: result.matchIds.join(",")
+      });
+
       await this.ingestionJobsRepository.markSucceeded(
         job.jobId,
         toJsonValue({
           parentJobId,
+          puuid: result.puuid,
           queueId: result.queueId,
+          regionalRouting: result.regionalRouting,
+          startTime: result.startTime,
+          endTime: result.endTime,
+          start: result.start,
+          count: result.count,
           matchesDiscovered: result.matchIds.length,
           matchIds: result.matchIds
         })
@@ -512,6 +580,16 @@ export class AggregationPipelineRunner {
 
     try {
       const result = await this.matchIngestionService.fetchAndNormalizeMatch(job);
+
+      this.logger.info("Riot Match-V5 detail fetched for ingestion.", {
+        jobId: job.jobId,
+        riotMatchId,
+        queueId: result.match.queueId,
+        mode: result.match.mode,
+        regionalRouting: result.match.regionalRouting,
+        participantCount: result.match.participants.length
+      });
+
       const persisted = await this.matchPersistenceRepository.persistNormalizedMatch({
         match: result.match,
         patchId,

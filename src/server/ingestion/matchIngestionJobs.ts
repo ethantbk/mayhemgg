@@ -24,7 +24,13 @@ export type MatchIngestionJob = MatchDiscoveryJob | MatchFetchJob;
 
 export type MatchDiscoveryJobResult = {
   jobId: string;
+  puuid: string;
   queueId: number;
+  regionalRouting: RiotRegionalRouting;
+  startTime?: number;
+  endTime?: number;
+  start?: number;
+  count?: number;
   matchIds: string[];
 };
 

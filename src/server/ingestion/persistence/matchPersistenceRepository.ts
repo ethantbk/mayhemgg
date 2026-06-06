@@ -17,6 +17,8 @@ type PersistNormalizedMatchInput = {
 export type PersistNormalizedMatchResult = {
   matchId: string;
   riotMatchId: string;
+  queueId: number;
+  mode: NormalizedMatch["mode"];
   participantsPersisted: number;
 };
 
@@ -103,6 +105,8 @@ export class MatchPersistenceRepository {
       return {
         matchId,
         riotMatchId: input.match.riotMatchId,
+        queueId: input.match.queueId,
+        mode: input.match.mode,
         participantsPersisted: input.match.participants.length
       };
     } catch (error) {

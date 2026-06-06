@@ -53,17 +53,23 @@ export class MatchIngestionService {
   }
 
   async fetchMatchIdsByQueue(job: MatchDiscoveryJob): Promise<MatchDiscoveryJobResult> {
+    const regionalRouting = job.regionalRouting ?? getRiotConfig().defaultRegionalRouting;
+
     this.logger.info("Starting match ID discovery job.", {
       jobId: job.jobId,
+      puuid: job.puuid,
       queueId: job.queueId,
-      regionalRouting: job.regionalRouting ?? getRiotConfig().defaultRegionalRouting,
+      regionalRouting,
+      startTime: job.startTime,
+      endTime: job.endTime,
+      start: job.start,
       count: job.count ?? 20
     });
 
     const matchIds = await this.matchClient.getMatchIdsByPuuidAndQueue({
       puuid: job.puuid,
       queue: job.queueId,
-      regionalRouting: job.regionalRouting,
+      regionalRouting,
       startTime: job.startTime,
       endTime: job.endTime,
       start: job.start,
@@ -73,12 +79,19 @@ export class MatchIngestionService {
     this.logger.info("Completed match ID discovery job.", {
       jobId: job.jobId,
       queueId: job.queueId,
+      regionalRouting,
       matchesDiscovered: matchIds.length
     });
 
     return {
       jobId: job.jobId,
+      puuid: job.puuid,
       queueId: job.queueId,
+      regionalRouting,
+      startTime: job.startTime,
+      endTime: job.endTime,
+      start: job.start,
+      count: job.count,
       matchIds
     };
   }
