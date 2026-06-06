@@ -3,7 +3,7 @@ import "server-only";
 import { getRiotConfig, isRiotConfigAvailable } from "@/server/riot/config";
 import { createDataDragonClient } from "@/server/riot/dataDragonClient";
 import { createRiotClient } from "@/server/riot/riotClient";
-import type { RiotConnectivityResult, RiotPlatformDataResponse } from "@/server/riot/types";
+import type { RiotAccountResponse, RiotConnectivityResult, RiotPlatformDataResponse } from "@/server/riot/types";
 
 export function isRiotServiceConfigured() {
   return isRiotConfigAvailable();
@@ -17,6 +17,26 @@ export async function getPlatformStatus() {
     path: "/lol/status/v4/platform-data",
     routeKey: "lol-status-v4-platform-data",
     platformRouting: config.defaultPlatformRouting
+  });
+}
+
+export async function getRiotAccountByRiotId({
+  gameName,
+  tagLine
+}: {
+  gameName: string;
+  tagLine: string;
+}): Promise<RiotAccountResponse> {
+  const config = getRiotConfig();
+  const riotClient = createRiotClient(config);
+  const encodedGameName = encodeURIComponent(gameName);
+  const encodedTagLine = encodeURIComponent(tagLine);
+
+  return riotClient.request<RiotAccountResponse>({
+    path: `/riot/account/v1/accounts/by-riot-id/${encodedGameName}/${encodedTagLine}`,
+    routeKey: "riot-account-v1-by-riot-id",
+    scope: "regional",
+    regionalRouting: config.defaultRegionalRouting
   });
 }
 

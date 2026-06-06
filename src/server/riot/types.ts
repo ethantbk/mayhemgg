@@ -54,6 +54,12 @@ export type RiotPlatformDataResponse = {
   incidents: RiotServiceStatus[];
 };
 
+export type RiotAccountResponse = {
+  puuid: string;
+  gameName: string;
+  tagLine: string;
+};
+
 export type DataDragonChampionSummaryResponse = {
   type: string;
   format: string;
