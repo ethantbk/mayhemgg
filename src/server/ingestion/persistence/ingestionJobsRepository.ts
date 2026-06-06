@@ -8,6 +8,10 @@ import type { BrokenScoreJob } from "@/server/aggregation/brokenScoreModels";
 import type { BuildAggregationJob } from "@/server/aggregation/buildAggregationModels";
 import type { ChampionAggregationJob } from "@/server/aggregation/championAggregationModels";
 import type { MatchIngestionJob } from "@/server/ingestion/matchIngestionJobs";
+import {
+  mapIngestionJob,
+  toIngestionJobWrite
+} from "@/server/ingestion/persistence/ingestionRecordMappers";
 import { toJsonValue } from "@/server/ingestion/persistence/json";
 import type { DbIngestionJob, DbIngestionJobStatus, JsonValue, NewDbIngestionJob } from "@/types/database";
 
@@ -73,9 +77,9 @@ export class IngestionJobsRepository {
       const existingResponse = await db
         .from("ingestion_jobs")
         .select("*")
-        .eq("jobId", input.job.jobId)
+        .eq("job_id", input.job.jobId)
         .limit(1);
-      const existingRows = unwrapSupabaseResponse(existingResponse, "Load ingestion job lock");
+      const existingRows = unwrapSupabaseResponse(existingResponse, "Load ingestion job lock").map(mapIngestionJob);
       const existingJob = existingRows[0];
 
       if (isFreshRunningJob(existingJob, lockTtlMs)) {
@@ -91,7 +95,7 @@ export class IngestionJobsRepository {
       if (!existingJob) {
         const insertResponse = await db
           .from("ingestion_jobs")
-          .insert({
+          .insert(toIngestionJobWrite({
             jobId: input.job.jobId,
             jobType: input.job.type,
             source: "riot",
@@ -100,7 +104,7 @@ export class IngestionJobsRepository {
             riotMatchId: getRiotMatchId(input.job),
             queueId: getQueueId(input.job),
             metadata: input.metadata ?? toJsonValue(input.job)
-          });
+          }) as never);
 
         if (insertResponse.error) {
           const insertError = toDatabaseError(insertResponse.error, "Create ingestion job lock");
@@ -114,7 +118,7 @@ export class IngestionJobsRepository {
       const now = new Date().toISOString();
       let updateQuery = db
         .from("ingestion_jobs")
-        .update({
+        .update(toIngestionJobWrite({
           status: "running",
           lockedAt: now,
           startedAt: now,
@@ -122,17 +126,17 @@ export class IngestionJobsRepository {
           errorMessage: null,
           patchId: input.patchId ?? null,
           metadata: input.metadata ?? toJsonValue(input.job)
-        })
-        .eq("jobId", input.job.jobId);
+        }) as never)
+        .eq("job_id", input.job.jobId);
 
       if (existingJob?.status === "running" && existingJob.lockedAt) {
-        updateQuery = updateQuery.eq("lockedAt", existingJob.lockedAt);
+        updateQuery = updateQuery.eq("locked_at", existingJob.lockedAt);
       } else {
         updateQuery = updateQuery.neq("status", "running");
       }
 
       const response = await updateQuery.select("*");
-      const lockedRows = unwrapSupabaseResponse(response, "Acquire ingestion job lock");
+      const lockedRows = unwrapSupabaseResponse(response, "Acquire ingestion job lock").map(mapIngestionJob);
 
       return lockedRows[0] ?? null;
     } catch (error) {
@@ -152,7 +156,7 @@ export class IngestionJobsRepository {
       const response = await db
         .from("ingestion_jobs")
         .upsert(
-          {
+          toIngestionJobWrite({
             jobId: input.job.jobId,
             jobType: input.job.type,
             source: "riot",
@@ -161,13 +165,13 @@ export class IngestionJobsRepository {
             riotMatchId: getRiotMatchId(input.job),
             queueId: getQueueId(input.job),
             metadata: input.metadata ?? toJsonValue(input.job)
-          },
-          { onConflict: "jobId" }
+          }) as never,
+          { onConflict: "job_id" }
         )
         .select("*")
         .single();
 
-      return unwrapSupabaseResponse(response, "Upsert ingestion job");
+      return mapIngestionJob(unwrapSupabaseResponse(response, "Upsert ingestion job"));
     } catch (error) {
       const databaseError = toDatabaseError(error, "Upsert ingestion job");
       this.logger.error("Failed to upsert ingestion job.", {
@@ -216,12 +220,12 @@ export class IngestionJobsRepository {
       const db = createServiceRoleSupabaseClient();
       const response = await db
         .from("ingestion_jobs")
-        .update(values)
-        .eq("jobId", jobId)
+        .update(toIngestionJobWrite(values) as never)
+        .eq("job_id", jobId)
         .select("*")
         .single();
 
-      return unwrapSupabaseResponse(response, "Update ingestion job status");
+      return mapIngestionJob(unwrapSupabaseResponse(response, "Update ingestion job status"));
     } catch (error) {
       const databaseError = toDatabaseError(error, "Update ingestion job status");
       this.logger.error("Failed to update ingestion job status.", {

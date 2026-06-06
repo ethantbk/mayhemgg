@@ -23,9 +23,7 @@ import type {
   DbChampionRole,
   DbBuildKind,
   DbGameMode,
-  DbIngestionJob,
   DbIngestionJobStatus,
-  DbIngestionRun,
   DbItem,
   DbItemCategory,
   DbPatch,
@@ -50,8 +48,6 @@ import type {
   NewDbChaosCreator,
   NewDbChampion,
   NewDbChampionGuide,
-  NewDbIngestionJob,
-  NewDbIngestionRun,
   NewDbItem,
   NewDbPatch,
   NewDbRiotMatch,
@@ -64,6 +60,82 @@ type TableDefinition<Row, Insert = Row, Update = Partial<Insert>> = {
   Insert: Insert;
   Update: Update;
   Relationships: [];
+};
+
+type SupabaseIngestionRunRow = {
+  id: string;
+  patch_id: string | null;
+  source: string;
+  status: string;
+  started_at: string;
+  finished_at: string | null;
+  records_processed: number;
+  error_message: string | null;
+  metadata: JsonValue;
+};
+
+type SupabaseIngestionRunInsert = Omit<SupabaseIngestionRunRow, "id" | "started_at" | "finished_at" | "records_processed" | "error_message" | "metadata"> & {
+  id?: string;
+  started_at?: string;
+  finished_at?: string | null;
+  records_processed?: number;
+  error_message?: string | null;
+  metadata?: JsonValue;
+};
+
+type SupabaseIngestionJobRow = {
+  id: string;
+  job_id: string;
+  job_type: string;
+  source: string;
+  status: DbIngestionJobStatus;
+  patch_id: string | null;
+  riot_match_id: string | null;
+  queue_id: number | null;
+  attempt_count: number;
+  locked_at: string | null;
+  next_attempt_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  error_message: string | null;
+  metadata: JsonValue;
+  created_at: string;
+  updated_at: string;
+};
+
+type SupabaseIngestionJobInsert = Omit<
+  SupabaseIngestionJobRow,
+  | "id"
+  | "source"
+  | "status"
+  | "patch_id"
+  | "riot_match_id"
+  | "queue_id"
+  | "attempt_count"
+  | "locked_at"
+  | "next_attempt_at"
+  | "started_at"
+  | "finished_at"
+  | "error_message"
+  | "metadata"
+  | "created_at"
+  | "updated_at"
+> & {
+  id?: string;
+  source?: string;
+  status?: DbIngestionJobStatus;
+  patch_id?: string | null;
+  riot_match_id?: string | null;
+  queue_id?: number | null;
+  attempt_count?: number;
+  locked_at?: string | null;
+  next_attempt_at?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  error_message?: string | null;
+  metadata?: JsonValue;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type MayhemDatabase = {
@@ -88,10 +160,10 @@ export type MayhemDatabase = {
       chaos_build_bookmarks: TableDefinition<DbChaosBuildBookmark, NewDbChaosBuildBookmark>;
       chaos_build_ratings: TableDefinition<DbChaosBuildRating, NewDbChaosBuildRating>;
       chaos_build_comments: TableDefinition<DbChaosBuildComment, NewDbChaosBuildComment>;
-      ingestion_runs: TableDefinition<DbIngestionRun, NewDbIngestionRun>;
+      ingestion_runs: TableDefinition<SupabaseIngestionRunRow, SupabaseIngestionRunInsert>;
       riot_matches: TableDefinition<DbRiotMatch, NewDbRiotMatch>;
       riot_match_participants: TableDefinition<DbRiotMatchParticipant, NewDbRiotMatchParticipant>;
-      ingestion_jobs: TableDefinition<DbIngestionJob, NewDbIngestionJob>;
+      ingestion_jobs: TableDefinition<SupabaseIngestionJobRow, SupabaseIngestionJobInsert>;
     };
     Views: Record<string, never>;
     Functions: {

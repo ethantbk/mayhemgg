@@ -3,6 +3,10 @@ import "server-only";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase/server";
 import { toDatabaseError, unwrapSupabaseResponse } from "@/lib/supabase/errors";
 import { createLogger, type Logger } from "@/server/logging/logger";
+import {
+  mapIngestionRun,
+  toIngestionRunWrite
+} from "@/server/ingestion/persistence/ingestionRecordMappers";
 import { toJsonValue } from "@/server/ingestion/persistence/json";
 import type { DbIngestionRun, JsonValue } from "@/types/database";
 
@@ -37,16 +41,16 @@ export class IngestionRunsRepository {
       const db = createServiceRoleSupabaseClient();
       const response = await db
         .from("ingestion_runs")
-        .insert({
-          patchId: input.patchId ?? null,
+        .insert(toIngestionRunWrite({
+          patch_id: input.patchId ?? null,
           source: input.source,
           status: "running",
           metadata: input.metadata ?? {}
-        })
+        }) as never)
         .select("*")
         .single();
 
-      const run = unwrapSupabaseResponse(response, "Start ingestion run");
+      const run = mapIngestionRun(unwrapSupabaseResponse(response, "Start ingestion run"));
 
       this.logger.info("Started ingestion run.", {
         ingestionRunId: run.id,
@@ -69,17 +73,17 @@ export class IngestionRunsRepository {
       const db = createServiceRoleSupabaseClient();
       const response = await db
         .from("ingestion_runs")
-        .update({
+        .update(toIngestionRunWrite({
           status: "succeeded",
-          finishedAt: new Date().toISOString(),
-          recordsProcessed: input.recordsProcessed ?? 0,
+          finished_at: new Date().toISOString(),
+          records_processed: input.recordsProcessed ?? 0,
           metadata: input.metadata ?? {}
-        })
+        }) as never)
         .eq("id", input.runId)
         .select("*")
         .single();
 
-      return unwrapSupabaseResponse(response, "Complete ingestion run");
+      return mapIngestionRun(unwrapSupabaseResponse(response, "Complete ingestion run"));
     } catch (error) {
       const databaseError = toDatabaseError(error, "Complete ingestion run");
       this.logger.error("Failed to complete ingestion run.", {
@@ -97,18 +101,18 @@ export class IngestionRunsRepository {
       const db = createServiceRoleSupabaseClient();
       const response = await db
         .from("ingestion_runs")
-        .update({
+        .update(toIngestionRunWrite({
           status: "failed",
-          finishedAt: new Date().toISOString(),
-          recordsProcessed: input.recordsProcessed ?? 0,
-          errorMessage: databaseError.message,
+          finished_at: new Date().toISOString(),
+          records_processed: input.recordsProcessed ?? 0,
+          error_message: databaseError.message,
           metadata: input.metadata ?? toJsonValue({ error: databaseError.message })
-        })
+        }) as never)
         .eq("id", input.runId)
         .select("*")
         .single();
 
-      return unwrapSupabaseResponse(response, "Fail ingestion run");
+      return mapIngestionRun(unwrapSupabaseResponse(response, "Fail ingestion run"));
     } catch (error) {
       const persistenceError = toDatabaseError(error, "Persist ingestion run failure");
       this.logger.error("Failed to persist ingestion run failure.", {

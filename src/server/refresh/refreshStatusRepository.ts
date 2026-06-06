@@ -2,8 +2,28 @@ import "server-only";
 
 import { createServiceRoleSupabaseClient } from "@/lib/supabase/server";
 import { toDatabaseError } from "@/lib/supabase/errors";
+import {
+  mapIngestionJob,
+  mapIngestionRun
+} from "@/server/ingestion/persistence/ingestionRecordMappers";
 import { createLogger, type Logger } from "@/server/logging/logger";
 import type { DbIngestionJob, DbIngestionRun, DbPatch } from "@/types/database";
+
+const PATCH_SELECT: string = `
+  id,
+  version,
+  dataDragonVersion:data_dragon_version,
+  status,
+  releasedAt:released_at,
+  ingestedAt:ingested_at,
+  notes,
+  createdAt:created_at,
+  updatedAt:updated_at
+`;
+
+function mapPatch(row: unknown): DbPatch {
+  return row as DbPatch;
+}
 
 export class RefreshStatusRepository {
   private logger: Logger;
@@ -16,23 +36,23 @@ export class RefreshStatusRepository {
     const db = createServiceRoleSupabaseClient();
     const { data, error } = await db
       .from("patches")
-      .select("*")
+      .select(PATCH_SELECT)
       .eq("status", "active")
-      .order("releasedAt", { ascending: false, nullsFirst: false })
+      .order("released_at", { ascending: false, nullsFirst: false })
       .limit(1);
 
     if (error) {
       throw toDatabaseError(error, "Load active patch for refresh");
     }
 
-    return data?.[0] ?? null;
+    return data?.[0] ? mapPatch(data[0]) : null;
   }
 
   async getPatchById(patchId: string): Promise<DbPatch | null> {
     const db = createServiceRoleSupabaseClient();
     const { data, error } = await db
       .from("patches")
-      .select("*")
+      .select(PATCH_SELECT)
       .eq("id", patchId)
       .maybeSingle();
 
@@ -40,14 +60,14 @@ export class RefreshStatusRepository {
       throw toDatabaseError(error, "Load patch by id for refresh");
     }
 
-    return data ?? null;
+    return data ? mapPatch(data) : null;
   }
 
   async getPatchByVersion(version: string): Promise<DbPatch | null> {
     const db = createServiceRoleSupabaseClient();
     const { data, error } = await db
       .from("patches")
-      .select("*")
+      .select(PATCH_SELECT)
       .eq("version", version)
       .maybeSingle();
 
@@ -55,7 +75,7 @@ export class RefreshStatusRepository {
       throw toDatabaseError(error, "Load patch by version for refresh");
     }
 
-    return data ?? null;
+    return data ? mapPatch(data) : null;
   }
 
   async getRecentJobs(limit = 20): Promise<DbIngestionJob[]> {
@@ -63,14 +83,14 @@ export class RefreshStatusRepository {
     const { data, error } = await db
       .from("ingestion_jobs")
       .select("*")
-      .order("updatedAt", { ascending: false })
+      .order("updated_at", { ascending: false })
       .limit(limit);
 
     if (error) {
       throw toDatabaseError(error, "Load recent ingestion jobs");
     }
 
-    return data ?? [];
+    return (data ?? []).map(mapIngestionJob);
   }
 
   async getRunningJobs(limit = 20): Promise<DbIngestionJob[]> {
@@ -79,14 +99,14 @@ export class RefreshStatusRepository {
       .from("ingestion_jobs")
       .select("*")
       .eq("status", "running")
-      .order("startedAt", { ascending: false, nullsFirst: false })
+      .order("started_at", { ascending: false, nullsFirst: false })
       .limit(limit);
 
     if (error) {
       throw toDatabaseError(error, "Load running ingestion jobs");
     }
 
-    return data ?? [];
+    return (data ?? []).map(mapIngestionJob);
   }
 
   async getRecentRuns(limit = 20): Promise<DbIngestionRun[]> {
@@ -94,7 +114,7 @@ export class RefreshStatusRepository {
     const { data, error } = await db
       .from("ingestion_runs")
       .select("*")
-      .order("startedAt", { ascending: false })
+      .order("started_at", { ascending: false })
       .limit(limit);
 
     if (error) {
@@ -105,7 +125,7 @@ export class RefreshStatusRepository {
       throw databaseError;
     }
 
-    return data ?? [];
+    return (data ?? []).map(mapIngestionRun);
   }
 }
 
