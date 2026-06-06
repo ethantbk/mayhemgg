@@ -1,4 +1,6 @@
 export type { MayhemDatabase, MayhemTableName } from "@/lib/supabase/database.types";
+export { createCookieSupabaseServerClient } from "@/lib/supabase/auth";
+export { createBrowserSupabaseClient, getBrowserSupabaseClient } from "@/lib/supabase/client";
 export {
   getSupabasePublicConfig,
   isSupabasePublicConfigAvailable,

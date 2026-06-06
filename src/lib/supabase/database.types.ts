@@ -7,6 +7,16 @@ import type {
   DbBuild,
   DbBuildAugment,
   DbBuildItem,
+  DbChaosBuild,
+  DbChaosBuildBookmark,
+  DbChaosBuildCategory,
+  DbChaosBuildComment,
+  DbChaosBuildRating,
+  DbChaosBuildRisk,
+  DbChaosBuildStatus,
+  DbChaosCommentStatus,
+  DbChaosCreator,
+  DbChaosRatingDifficulty,
   DbChampion,
   DbChampionDifficulty,
   DbChampionGuide,
@@ -33,6 +43,11 @@ import type {
   NewDbBuild,
   NewDbBuildAugment,
   NewDbBuildItem,
+  NewDbChaosBuild,
+  NewDbChaosBuildBookmark,
+  NewDbChaosBuildComment,
+  NewDbChaosBuildRating,
+  NewDbChaosCreator,
   NewDbChampion,
   NewDbChampionGuide,
   NewDbIngestionJob,
@@ -68,6 +83,11 @@ export type MayhemDatabase = {
       tier_lists: TableDefinition<DbTierList, NewDbTierList>;
       tier_list_entries: TableDefinition<DbTierListEntry>;
       champion_guides: TableDefinition<DbChampionGuide, NewDbChampionGuide>;
+      chaos_creators: TableDefinition<DbChaosCreator, NewDbChaosCreator>;
+      chaos_builds: TableDefinition<DbChaosBuild, NewDbChaosBuild>;
+      chaos_build_bookmarks: TableDefinition<DbChaosBuildBookmark, NewDbChaosBuildBookmark>;
+      chaos_build_ratings: TableDefinition<DbChaosBuildRating, NewDbChaosBuildRating>;
+      chaos_build_comments: TableDefinition<DbChaosBuildComment, NewDbChaosBuildComment>;
       ingestion_runs: TableDefinition<DbIngestionRun, NewDbIngestionRun>;
       riot_matches: TableDefinition<DbRiotMatch, NewDbRiotMatch>;
       riot_match_participants: TableDefinition<DbRiotMatchParticipant, NewDbRiotMatchParticipant>;
@@ -92,6 +112,11 @@ export type MayhemDatabase = {
       item_category: DbItemCategory;
       patch_status: DbPatchStatus;
       ingestion_job_status: DbIngestionJobStatus;
+      chaos_build_category: DbChaosBuildCategory;
+      chaos_build_status: DbChaosBuildStatus;
+      chaos_build_risk: DbChaosBuildRisk;
+      chaos_rating_difficulty: DbChaosRatingDifficulty;
+      chaos_comment_status: DbChaosCommentStatus;
     };
     CompositeTypes: Record<string, never>;
   };

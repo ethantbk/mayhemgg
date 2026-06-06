@@ -6,6 +6,11 @@ export type DbBuildKind = "best" | "broken" | "standard" | "experimental";
 export type DbItemCategory = "starter" | "core" | "damage" | "defense" | "utility" | "boots";
 export type DbPatchStatus = "pending" | "active" | "archived";
 export type DbIngestionJobStatus = "queued" | "running" | "succeeded" | "retryable_failed" | "rate_limited" | "permanently_failed";
+export type DbChaosBuildCategory = "community" | "experimental" | "upvoted" | "newest";
+export type DbChaosBuildStatus = "verified" | "testing" | "unstable" | "fresh" | "archived";
+export type DbChaosBuildRisk = "low" | "medium" | "high" | "extreme";
+export type DbChaosRatingDifficulty = "easy" | "moderate" | "hard" | "expert";
+export type DbChaosCommentStatus = "visible" | "hidden" | "flagged";
 
 export type JsonValue =
   | string
@@ -192,6 +197,91 @@ export type DbChampionGuide = {
   updatedAt: string;
 };
 
+export type DbChaosCreator = {
+  id: string;
+  authUserId: string | null;
+  displayName: string;
+  handle: string;
+  slug: string;
+  specialty: string;
+  featuredChampionId: string | null;
+  avatarPath: string | null;
+  buildsPublished: number;
+  totalVotes: number;
+  reputationScore: number;
+  spotlight: string;
+  rawData: JsonValue;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DbChaosBuild = {
+  id: string;
+  slug: string;
+  patchId: string | null;
+  creatorId: string;
+  championId: string;
+  mode: DbGameMode;
+  title: string;
+  category: DbChaosBuildCategory;
+  status: DbChaosBuildStatus;
+  risk: DbChaosBuildRisk;
+  description: string;
+  coreItemPath: JsonValue;
+  recommendedAugments: string[];
+  tags: string[];
+  matchupNotes: string[];
+  strengths: string[];
+  weaknesses: string[];
+  votes: number;
+  savedCount: number;
+  commentsCount: number;
+  winRate: number | null;
+  gamesPlayed: number;
+  source: string;
+  isFeatured: boolean;
+  publishedAt: string | null;
+  rawData: JsonValue;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DbChaosBuildRating = {
+  id: string;
+  chaosBuildId: string;
+  authUserId: string | null;
+  ratingScore: number;
+  isUpvote: boolean;
+  difficultyVote: DbChaosRatingDifficulty | null;
+  voterFingerprint: string | null;
+  metadata: JsonValue;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DbChaosBuildComment = {
+  id: string;
+  chaosBuildId: string;
+  authUserId: string | null;
+  creatorId: string | null;
+  parentCommentId: string | null;
+  authorName: string;
+  authorBadge: string | null;
+  body: string;
+  status: DbChaosCommentStatus;
+  metadata: JsonValue;
+  postedAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DbChaosBuildBookmark = {
+  id: string;
+  chaosBuildId: string;
+  authUserId: string;
+  createdAt: string;
+};
+
 export type DbIngestionRun = {
   id: string;
   patchId: string | null;
@@ -296,6 +386,114 @@ export type NewDbAramMayhemChampionStatistic = Omit<DbAramMayhemChampionStatisti
 export type NewDbAugmentStatistic = Omit<DbAugmentStatistic, "id" | "createdAt" | "updatedAt">;
 export type NewDbTierList = Omit<DbTierList, "id" | "createdAt" | "updatedAt">;
 export type NewDbChampionGuide = Omit<DbChampionGuide, "id" | "createdAt" | "updatedAt">;
+export type NewDbChaosCreator = Omit<
+  DbChaosCreator,
+  | "id"
+  | "authUserId"
+  | "featuredChampionId"
+  | "avatarPath"
+  | "buildsPublished"
+  | "totalVotes"
+  | "reputationScore"
+  | "rawData"
+  | "createdAt"
+  | "updatedAt"
+> & {
+  authUserId?: string | null;
+  featuredChampionId?: string | null;
+  avatarPath?: string | null;
+  buildsPublished?: number;
+  totalVotes?: number;
+  reputationScore?: number;
+  rawData?: JsonValue;
+};
+export type NewDbChaosBuild = Omit<
+  DbChaosBuild,
+  | "id"
+  | "patchId"
+  | "category"
+  | "status"
+  | "risk"
+  | "coreItemPath"
+  | "recommendedAugments"
+  | "tags"
+  | "matchupNotes"
+  | "strengths"
+  | "weaknesses"
+  | "votes"
+  | "savedCount"
+  | "commentsCount"
+  | "winRate"
+  | "gamesPlayed"
+  | "source"
+  | "isFeatured"
+  | "publishedAt"
+  | "rawData"
+  | "createdAt"
+  | "updatedAt"
+> & {
+  patchId?: string | null;
+  category?: DbChaosBuildCategory;
+  status?: DbChaosBuildStatus;
+  risk?: DbChaosBuildRisk;
+  coreItemPath?: JsonValue;
+  recommendedAugments?: string[];
+  tags?: string[];
+  matchupNotes?: string[];
+  strengths?: string[];
+  weaknesses?: string[];
+  votes?: number;
+  savedCount?: number;
+  commentsCount?: number;
+  winRate?: number | null;
+  gamesPlayed?: number;
+  source?: string;
+  isFeatured?: boolean;
+  publishedAt?: string | null;
+  rawData?: JsonValue;
+};
+export type NewDbChaosBuildRating = Omit<
+  DbChaosBuildRating,
+  | "id"
+  | "authUserId"
+  | "isUpvote"
+  | "difficultyVote"
+  | "voterFingerprint"
+  | "metadata"
+  | "createdAt"
+  | "updatedAt"
+> & {
+  authUserId?: string | null;
+  isUpvote?: boolean;
+  difficultyVote?: DbChaosRatingDifficulty | null;
+  voterFingerprint?: string | null;
+  metadata?: JsonValue;
+};
+export type NewDbChaosBuildComment = Omit<
+  DbChaosBuildComment,
+  | "id"
+  | "authUserId"
+  | "creatorId"
+  | "parentCommentId"
+  | "authorBadge"
+  | "status"
+  | "metadata"
+  | "postedAt"
+  | "createdAt"
+  | "updatedAt"
+> & {
+  authUserId?: string | null;
+  creatorId?: string | null;
+  parentCommentId?: string | null;
+  authorBadge?: string | null;
+  status?: DbChaosCommentStatus;
+  metadata?: JsonValue;
+  postedAt?: string;
+};
+export type NewDbChaosBuildBookmark = Omit<DbChaosBuildBookmark, "id" | "createdAt"> & {
+  id?: string;
+  createdAt?: string;
+};
 export type NewDbIngestionRun = Omit<DbIngestionRun, "id" | "startedAt" | "finishedAt" | "recordsProcessed" | "errorMessage" | "metadata"> & {
   id?: string;
   startedAt?: string;

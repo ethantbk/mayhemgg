@@ -66,4 +66,5 @@ export type Champion = {
 
 export type ModeStatsKey = "arenaStats" | "aramMayhemStats";
 
+export * from "./chaosLab";
 export * from "./database";

@@ -19,6 +19,10 @@ const augmentIconFiles: Record<string, string> = {
   vulnerability: "vulnerability.png"
 };
 
+const availableLocalAugmentIconFiles = new Set<string>([
+  // Add local files here as they are placed in /public/images/augments.
+]);
+
 export function getAugmentAssetKey(source: AugmentAssetSource) {
   const value = typeof source === "string" ? source : source.id || source.name;
 
@@ -32,6 +36,10 @@ export function getAugmentAssetKey(source: AugmentAssetSource) {
 export function getAugmentIconPath(source: AugmentAssetSource) {
   const key = getAugmentAssetKey(source);
   const fileName = augmentIconFiles[key] ?? `${key}.png`;
+
+  if (!availableLocalAugmentIconFiles.has(fileName)) {
+    return null;
+  }
 
   return `${LOCAL_AUGMENT_ICON_BASE_PATH}/${fileName}`;
 }

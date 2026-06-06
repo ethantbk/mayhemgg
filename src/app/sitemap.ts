@@ -1,12 +1,16 @@
 import type { MetadataRoute } from "next";
 import { getChampions } from "@/server/repositories/championsRepository";
+import { getChaosLabCreators } from "@/server/repositories/chaosLabRepository";
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://mayhemgg.com").replace(/\/$/, "");
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticRoutes = ["", "/champions", "/tier-list", "/broken-builds", "/augments"];
+  const staticRoutes = ["", "/champions", "/tier-list", "/broken-builds", "/augments", "/chaos-lab"];
   const now = new Date();
-  const champions = await getChampions();
+  const [champions, chaosCreators] = await Promise.all([
+    getChampions(),
+    getChaosLabCreators()
+  ]);
 
   const staticEntries = staticRoutes.map((route) => ({
     url: `${siteUrl}${route}`,
@@ -22,5 +26,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7
   })) satisfies MetadataRoute.Sitemap;
 
-  return [...staticEntries, ...championEntries];
+  const chaosCreatorEntries = chaosCreators.map((creator) => ({
+    url: `${siteUrl}/chaos-lab/creator/${creator.slug}`,
+    lastModified: now,
+    changeFrequency: "weekly",
+    priority: 0.6
+  })) satisfies MetadataRoute.Sitemap;
+
+  return [...staticEntries, ...championEntries, ...chaosCreatorEntries];
 }

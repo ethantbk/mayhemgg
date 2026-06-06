@@ -36,7 +36,7 @@ export function AugmentIcon({
       aria-label={`${label} augment icon`}
     >
       <span className="absolute inset-0 bg-[radial-gradient(circle_at_32%_18%,rgba(66,214,255,0.34),transparent_36%),radial-gradient(circle_at_74%_78%,rgba(184,255,75,0.24),transparent_38%)]" />
-      {!imageFailed ? (
+      {iconPath && !imageFailed ? (
         <Image
           src={iconPath}
           alt=""

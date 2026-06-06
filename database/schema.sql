@@ -12,6 +12,11 @@ create type build_kind as enum ('best', 'broken', 'standard', 'experimental');
 create type item_category as enum ('starter', 'core', 'damage', 'defense', 'utility', 'boots');
 create type patch_status as enum ('pending', 'active', 'archived');
 create type ingestion_job_status as enum ('queued', 'running', 'succeeded', 'retryable_failed', 'rate_limited', 'permanently_failed');
+create type chaos_build_category as enum ('community', 'experimental', 'upvoted', 'newest');
+create type chaos_build_status as enum ('verified', 'testing', 'unstable', 'fresh', 'archived');
+create type chaos_build_risk as enum ('low', 'medium', 'high', 'extreme');
+create type chaos_rating_difficulty as enum ('easy', 'moderate', 'hard', 'expert');
+create type chaos_comment_status as enum ('visible', 'hidden', 'flagged');
 
 create table patches (
   id uuid primary key default gen_random_uuid(),
@@ -230,6 +235,107 @@ create table champion_guides (
   updated_at timestamptz not null default now()
 );
 
+create table chaos_creators (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid unique references auth.users(id) on delete set null,
+  display_name text not null,
+  handle text not null unique,
+  slug text not null unique,
+  specialty text not null,
+  featured_champion_id uuid references champions(id) on delete set null,
+  avatar_path text,
+  builds_published integer not null default 0,
+  total_votes integer not null default 0,
+  reputation_score numeric(6, 2) not null default 0,
+  spotlight text not null,
+  raw_data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint chaos_creators_counts_nonnegative check (
+    builds_published >= 0 and
+    total_votes >= 0 and
+    reputation_score >= 0
+  )
+);
+
+create table chaos_builds (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique,
+  patch_id uuid references patches(id) on delete set null,
+  creator_id uuid not null references chaos_creators(id) on delete restrict,
+  champion_id uuid not null references champions(id) on delete cascade,
+  mode game_mode not null,
+  title text not null,
+  category chaos_build_category not null default 'community',
+  status chaos_build_status not null default 'fresh',
+  risk chaos_build_risk not null default 'medium',
+  description text not null,
+  core_item_path jsonb not null default '[]'::jsonb,
+  recommended_augments text[] not null default '{}',
+  tags text[] not null default '{}',
+  matchup_notes text[] not null default '{}',
+  strengths text[] not null default '{}',
+  weaknesses text[] not null default '{}',
+  votes integer not null default 0,
+  saved_count integer not null default 0,
+  comments_count integer not null default 0,
+  win_rate numeric(5, 2),
+  games_played integer not null default 0,
+  source text not null default 'community',
+  is_featured boolean not null default false,
+  published_at timestamptz,
+  raw_data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint chaos_builds_counts_nonnegative check (
+    comments_count >= 0 and
+    saved_count >= 0 and
+    games_played >= 0
+  ),
+  constraint chaos_builds_rate_bounds check (
+    win_rate is null or (win_rate >= 0 and win_rate <= 100)
+  )
+);
+
+create table chaos_build_ratings (
+  id uuid primary key default gen_random_uuid(),
+  chaos_build_id uuid not null references chaos_builds(id) on delete cascade,
+  auth_user_id uuid references auth.users(id) on delete cascade,
+  rating_score numeric(3, 1) not null,
+  is_upvote boolean not null default true,
+  difficulty_vote chaos_rating_difficulty,
+  voter_fingerprint text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint chaos_build_ratings_score_bounds check (rating_score >= 0 and rating_score <= 10),
+  constraint chaos_build_ratings_unique_build_auth_user unique (chaos_build_id, auth_user_id)
+);
+
+create table chaos_build_comments (
+  id uuid primary key default gen_random_uuid(),
+  chaos_build_id uuid not null references chaos_builds(id) on delete cascade,
+  auth_user_id uuid references auth.users(id) on delete set null,
+  creator_id uuid references chaos_creators(id) on delete set null,
+  parent_comment_id uuid references chaos_build_comments(id) on delete cascade,
+  author_name text not null,
+  author_badge text,
+  body text not null,
+  status chaos_comment_status not null default 'visible',
+  metadata jsonb not null default '{}'::jsonb,
+  posted_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table chaos_build_bookmarks (
+  id uuid primary key default gen_random_uuid(),
+  chaos_build_id uuid not null references chaos_builds(id) on delete cascade,
+  auth_user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (chaos_build_id, auth_user_id)
+);
+
 create table ingestion_runs (
   id uuid primary key default gen_random_uuid(),
   patch_id uuid references patches(id) on delete set null,
@@ -318,6 +424,25 @@ create index riot_matches_queue_started_idx on riot_matches (queue_id, game_star
 create index riot_match_participants_champion_idx on riot_match_participants (riot_champion_id);
 create index riot_match_participants_match_id_idx on riot_match_participants (match_id);
 create index ingestion_jobs_status_next_attempt_idx on ingestion_jobs (status, next_attempt_at);
+create index chaos_creators_featured_champion_idx on chaos_creators (featured_champion_id);
+create index chaos_creators_auth_user_id_idx on chaos_creators (auth_user_id)
+  where auth_user_id is not null;
+create index chaos_builds_patch_mode_idx on chaos_builds (patch_id, mode);
+create index chaos_builds_champion_mode_idx on chaos_builds (champion_id, mode);
+create index chaos_builds_creator_published_idx on chaos_builds (creator_id, published_at desc);
+create index chaos_builds_category_votes_idx on chaos_builds (category, votes desc);
+create index chaos_builds_tags_idx on chaos_builds using gin (tags);
+create index chaos_builds_saved_count_idx on chaos_builds (saved_count desc);
+create index chaos_build_ratings_build_idx on chaos_build_ratings (chaos_build_id);
+create unique index chaos_build_ratings_unique_fingerprint
+  on chaos_build_ratings (chaos_build_id, voter_fingerprint)
+  where voter_fingerprint is not null;
+create index chaos_build_comments_build_posted_idx on chaos_build_comments (chaos_build_id, posted_at desc)
+  where status = 'visible';
+create index chaos_build_comments_auth_user_id_idx on chaos_build_comments (auth_user_id)
+  where auth_user_id is not null;
+create index chaos_build_bookmarks_user_created_idx on chaos_build_bookmarks (auth_user_id, created_at desc);
+create index chaos_build_bookmarks_build_idx on chaos_build_bookmarks (chaos_build_id);
 
 create unique index champion_guides_unique_global_mode
   on champion_guides (patch_id, champion_id)
@@ -373,6 +498,22 @@ create trigger tier_lists_set_updated_at
 
 create trigger champion_guides_set_updated_at
   before update on champion_guides
+  for each row execute function set_updated_at();
+
+create trigger chaos_creators_set_updated_at
+  before update on chaos_creators
+  for each row execute function set_updated_at();
+
+create trigger chaos_builds_set_updated_at
+  before update on chaos_builds
+  for each row execute function set_updated_at();
+
+create trigger chaos_build_ratings_set_updated_at
+  before update on chaos_build_ratings
+  for each row execute function set_updated_at();
+
+create trigger chaos_build_comments_set_updated_at
+  before update on chaos_build_comments
   for each row execute function set_updated_at();
 
 create trigger riot_matches_set_updated_at

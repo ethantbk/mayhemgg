@@ -4,12 +4,14 @@ import { ArrowRight } from "lucide-react";
 import { BrokenBuildShowcase } from "@/components/BrokenBuildShowcase";
 import { ChampionCard } from "@/components/ChampionCard";
 import { ChampionSpotlightCard } from "@/components/ChampionSpotlightCard";
+import { ChaosFeaturedBuilds } from "@/components/ChaosFeaturedBuilds";
 import { HeroBanner } from "@/components/HeroBanner";
 import { SectionHeader } from "@/components/SectionHeader";
 import { AugmentIcon } from "@/components/AugmentIcon";
 import { getAugments } from "@/server/repositories/augmentsRepository";
 import { getBrokenBuilds } from "@/server/repositories/buildsRepository";
 import { getChampions, getTopChampions } from "@/server/repositories/championsRepository";
+import { getChaosLabBuilds, getChaosLabCreators } from "@/server/repositories/chaosLabRepository";
 
 export const metadata: Metadata = {
   title: "MayhemGG | ARAM Mayhem and Arena Builds",
@@ -21,13 +23,15 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [champions, arenaChampions, aramChampions, brokenBuildsRaw, spotlightChampions, augmentsRaw] = await Promise.all([
+  const [champions, arenaChampions, aramChampions, brokenBuildsRaw, spotlightChampions, augmentsRaw, chaosBuilds, chaosCreators] = await Promise.all([
     getChampions(),
     getTopChampions("arena", 4),
     getTopChampions("aramMayhem", 4),
     getBrokenBuilds(),
     getTopChampions("arena", 3),
-    getAugments()
+    getAugments(),
+    getChaosLabBuilds(),
+    getChaosLabCreators()
   ]);
   const brokenBuilds = brokenBuildsRaw.slice(0, 4);
   const augments = augmentsRaw.slice(0, 4);
@@ -53,6 +57,16 @@ export default async function HomePage() {
               <ChampionSpotlightCard key={champion.slug} champion={champion} mode="arena" rank={index + 1} />
             ))}
           </div>
+        </section>
+
+        <section>
+          <SectionHeader
+            eyebrow="Chaos Lab"
+            title="Featured Community Builds"
+            description="The most active player-made builds ranked by votes, comments, saves, and recent activity across the Chaos Lab."
+            action={<Link href="/chaos-lab" className="inline-flex items-center gap-2 text-sm font-black text-frost transition hover:text-white">Explore Chaos Lab <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}
+          />
+          <ChaosFeaturedBuilds builds={chaosBuilds} creators={chaosCreators} />
         </section>
 
         <section>

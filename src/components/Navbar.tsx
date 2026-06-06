@@ -6,7 +6,8 @@ const navItems = [
   { href: "/champions", label: "Champions" },
   { href: "/tier-list", label: "Tier List" },
   { href: "/broken-builds", label: "Broken Builds" },
-  { href: "/augments", label: "Augments" }
+  { href: "/augments", label: "Augments" },
+  { href: "/chaos-lab", label: "Chaos Lab" }
 ];
 
 export function Navbar() {
