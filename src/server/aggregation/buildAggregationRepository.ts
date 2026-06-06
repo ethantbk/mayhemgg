@@ -4,6 +4,7 @@ import { createServiceRoleSupabaseClient } from "@/lib/supabase/server";
 import { toDatabaseError, unwrapSupabaseResponse } from "@/lib/supabase/errors";
 import { createLogger, type Logger } from "@/server/logging/logger";
 import { toJsonValue } from "@/server/ingestion/persistence/json";
+import { mapRiotMatch, mapRiotMatchParticipant } from "@/server/ingestion/persistence/riotMatchRecordMappers";
 import type { AggregatedChampionBuild, BuildAggregationMode } from "@/server/aggregation/buildAggregationModels";
 import type { DbBuild, DbChampion, DbItem, DbRiotMatch, DbRiotMatchParticipant, NewDbBuild } from "@/types/database";
 
@@ -45,14 +46,14 @@ export class BuildAggregationRepository {
     const { data, error } = await db
       .from("riot_matches")
       .select("*")
-      .eq("patchId", patchId)
+      .eq("patch_id", patchId)
       .eq("mode", mode);
 
     if (error) {
       throw toDatabaseError(error, "Load persisted matches for build aggregation");
     }
 
-    return data ?? [];
+    return (data ?? []).map(mapRiotMatch);
   }
 
   async getParticipantsForMatches(matchIds: string[]): Promise<DbRiotMatchParticipant[]> {
@@ -62,13 +63,13 @@ export class BuildAggregationRepository {
     const { data, error } = await db
       .from("riot_match_participants")
       .select("*")
-      .in("matchId", matchIds);
+      .in("match_id", matchIds);
 
     if (error) {
       throw toDatabaseError(error, "Load persisted participants for build aggregation");
     }
 
-    return data ?? [];
+    return (data ?? []).map(mapRiotMatchParticipant);
   }
 
   async persistBuilds(builds: AggregatedChampionBuild[], itemsByRiotId: Map<number, DbItem>): Promise<PersistBuildAggregationResult> {

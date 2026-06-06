@@ -2,10 +2,14 @@ import type { NextRequest } from "next/server";
 import { createScheduledRefreshService, type ChampionRefreshRunInput, type RefreshRunInput } from "@/server/refresh";
 import { isRefreshRequestAuthorized, unauthorizedRefreshResponse } from "@/app/api/refresh/auth";
 import { readJsonBody } from "@/app/api/refresh/requestUtils";
+import { toDatabaseError } from "@/lib/supabase/errors";
+import { createLogger } from "@/server/logging/logger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 300;
+
+const logger = createLogger({ component: "refresh-run-api" });
 
 type RefreshRunRequestBody = RefreshRunInput & {
   kind?: "daily" | "manual" | "champion";
@@ -42,10 +46,22 @@ export async function POST(request: NextRequest) {
       ...result
     });
   } catch (error) {
+    const databaseError = toDatabaseError(error, "Refresh run failed");
+
+    logger.error("Refresh run API request failed.", {
+      error: databaseError.message,
+      code: databaseError.code,
+      details: databaseError.details,
+      hint: databaseError.hint
+    });
+
     return Response.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "Refresh run failed."
+        error: databaseError.message,
+        code: databaseError.code,
+        details: databaseError.details,
+        hint: databaseError.hint
       },
       { status: 500 }
     );

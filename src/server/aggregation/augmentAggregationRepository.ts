@@ -4,6 +4,7 @@ import { createServiceRoleSupabaseClient } from "@/lib/supabase/server";
 import { toDatabaseError, unwrapSupabaseResponse } from "@/lib/supabase/errors";
 import { createLogger, type Logger } from "@/server/logging/logger";
 import { toJsonValue } from "@/server/ingestion/persistence/json";
+import { mapRiotMatch, mapRiotMatchParticipant } from "@/server/ingestion/persistence/riotMatchRecordMappers";
 import type { AggregatedAugmentStatistic, AugmentAggregationMode } from "@/server/aggregation/augmentAggregationModels";
 import type {
   DbAugment,
@@ -54,14 +55,14 @@ export class AugmentAggregationRepository {
     const { data, error } = await db
       .from("riot_matches")
       .select("*")
-      .eq("patchId", patchId)
+      .eq("patch_id", patchId)
       .eq("mode", mode);
 
     if (error) {
       throw toDatabaseError(error, "Load persisted matches for augment aggregation");
     }
 
-    return data ?? [];
+    return (data ?? []).map(mapRiotMatch);
   }
 
   async getParticipantsForMatches(matchIds: string[]): Promise<DbRiotMatchParticipant[]> {
@@ -71,13 +72,13 @@ export class AugmentAggregationRepository {
     const { data, error } = await db
       .from("riot_match_participants")
       .select("*")
-      .in("matchId", matchIds);
+      .in("match_id", matchIds);
 
     if (error) {
       throw toDatabaseError(error, "Load persisted participants for augment aggregation");
     }
 
-    return data ?? [];
+    return (data ?? []).map(mapRiotMatchParticipant);
   }
 
   async persistAugmentStatistics(statistics: AggregatedAugmentStatistic[]): Promise<PersistAugmentAggregationResult> {

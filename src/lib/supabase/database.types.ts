@@ -28,8 +28,6 @@ import type {
   DbItemCategory,
   DbPatch,
   DbPatchStatus,
-  DbRiotMatch,
-  DbRiotMatchParticipant,
   DbTierList,
   DbTierListEntry,
   DbTierRank,
@@ -50,10 +48,9 @@ import type {
   NewDbChampionGuide,
   NewDbItem,
   NewDbPatch,
-  NewDbRiotMatch,
-  NewDbRiotMatchParticipant,
   NewDbTierList
 } from "@/types/database";
+import type { DbRiotMatchParticipantRow, DbRiotMatchRow } from "@/server/ingestion/persistence/riotMatchRecordMappers";
 
 type TableDefinition<Row, Insert = Row, Update = Partial<Insert>> = {
   Row: Row;
@@ -138,6 +135,19 @@ type SupabaseIngestionJobInsert = Omit<
   updated_at?: string;
 };
 
+type SupabaseRiotMatchInsert = Omit<DbRiotMatchRow, "id" | "created_at" | "updated_at" | "ingested_at"> & {
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+  ingested_at?: string;
+};
+
+type SupabaseRiotMatchParticipantInsert = Omit<DbRiotMatchParticipantRow, "id" | "created_at" | "updated_at"> & {
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type MayhemDatabase = {
   public: {
     Tables: {
@@ -161,8 +171,8 @@ export type MayhemDatabase = {
       chaos_build_ratings: TableDefinition<DbChaosBuildRating, NewDbChaosBuildRating>;
       chaos_build_comments: TableDefinition<DbChaosBuildComment, NewDbChaosBuildComment>;
       ingestion_runs: TableDefinition<SupabaseIngestionRunRow, SupabaseIngestionRunInsert>;
-      riot_matches: TableDefinition<DbRiotMatch, NewDbRiotMatch>;
-      riot_match_participants: TableDefinition<DbRiotMatchParticipant, NewDbRiotMatchParticipant>;
+      riot_matches: TableDefinition<DbRiotMatchRow, SupabaseRiotMatchInsert>;
+      riot_match_participants: TableDefinition<DbRiotMatchParticipantRow, SupabaseRiotMatchParticipantInsert>;
       ingestion_jobs: TableDefinition<SupabaseIngestionJobRow, SupabaseIngestionJobInsert>;
     };
     Views: Record<string, never>;
