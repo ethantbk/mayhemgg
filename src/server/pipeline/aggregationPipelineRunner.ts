@@ -373,7 +373,7 @@ export class AggregationPipelineRunner {
 
       if (!limitedMatchIds.length) {
         const reason = discoverySources.length
-          ? "Riot Match-V5 returned zero match IDs for the configured PUUID, queue, and time-window filters."
+          ? "Unfiltered Match-V5 discovery returned no eligible matches after local queueId filtering."
           : "No match ingestion discovery sources or explicit match IDs were provided. Use kind=daily or provide matchIngestion.matchIds.";
 
         skippedMatches.push({ reason });
@@ -382,6 +382,9 @@ export class AggregationPipelineRunner {
           patchId,
           seedPuuidCount: seedPuuids.length,
           discoverySourceCount: discoverySources.length,
+          unfilteredMatchIdsReturned: discoveryResults.reduce((sum, entry) => sum + entry.unfilteredMatchIds.length, 0),
+          localQueueIdsFound: uniqueValues(discoveryResults.flatMap((entry) => entry.queueIdsFound.map(String))).join(","),
+          eligibleMatchIdsAfterLocalFilter: discoveredMatchIds.join(","),
           reason
         });
       }
@@ -468,6 +471,16 @@ export class AggregationPipelineRunner {
         })
       });
 
+      this.logger.info("Completed refresh match ingestion persistence.", {
+        parentJobId,
+        patchId,
+        unfilteredMatchIdsReturned: discoveryResults.reduce((sum, entry) => sum + entry.unfilteredMatchIds.length, 0),
+        localQueueIdsFound: uniqueValues(discoveryResults.flatMap((entry) => entry.queueIdsFound.map(String))).join(","),
+        eligibleMatchIdsAfterLocalFilter: requestedMatchIds.join(","),
+        matchesPersisted: result.matchesPersisted,
+        participantsPersisted: result.participantsPersisted
+      });
+
       return result;
     } catch (error) {
       await this.ingestionRunsRepository.failRun({
@@ -512,15 +525,17 @@ export class AggregationPipelineRunner {
     await this.ingestionJobsRepository.markRunning(job.jobId);
 
     try {
-      const result = await this.matchIngestionService.fetchMatchIdsByQueue(job);
+      const result = await this.matchIngestionService.fetchMatchIdsWithLocalQueueFilter(job);
 
-      this.logger.info("Riot Match-V5 discovery returned match IDs.", {
+      this.logger.info("Unfiltered Match-V5 discovery completed with local queue filter.", {
         jobId: job.jobId,
         puuid: job.puuid,
-        queueId: job.queueId,
+        targetQueueId: job.queueId,
         regionalRouting: result.regionalRouting,
-        matchCount: result.matchIds.length,
-        matchIds: result.matchIds.join(",")
+        unfilteredMatchIdsReturned: result.unfilteredMatchIds.length,
+        localQueueIdsFound: result.queueIdsFound.join(","),
+        eligibleMatchIdsAfterLocalFilter: result.matchIds.join(","),
+        eligibleMatchCountAfterLocalFilter: result.matchIds.length
       });
 
       await this.ingestionJobsRepository.markSucceeded(

@@ -54,7 +54,7 @@ export function getDefaultMatchNormalizationOptions(): MatchNormalizationOptions
     arenaQueueId,
     aramMayhemQueueId,
     arenaQueueIds: readQueueIds("RIOT_ARENA_QUEUE_IDS", process.env.RIOT_ARENA_QUEUE_IDS, [...new Set([arenaQueueId, 1710])]),
-    aramMayhemQueueIds: readQueueIds("RIOT_ARAM_MAYHEM_QUEUE_IDS", process.env.RIOT_ARAM_MAYHEM_QUEUE_IDS, [aramMayhemQueueId])
+    aramMayhemQueueIds: readQueueIds("RIOT_ARAM_MAYHEM_QUEUE_IDS", process.env.RIOT_ARAM_MAYHEM_QUEUE_IDS, [...new Set([aramMayhemQueueId, 2400])])
   };
 }
 
@@ -72,13 +72,13 @@ export class MatchIngestionService {
     };
   }
 
-  async fetchMatchIdsByQueue(job: MatchDiscoveryJob): Promise<MatchDiscoveryJobResult> {
+  async fetchMatchIdsWithLocalQueueFilter(job: MatchDiscoveryJob): Promise<MatchDiscoveryJobResult> {
     const regionalRouting = job.regionalRouting ?? getRiotConfig().defaultRegionalRouting;
 
-    this.logger.info("Starting match ID discovery job.", {
+    this.logger.info("Starting unfiltered Match-V5 discovery with local queue filtering.", {
       jobId: job.jobId,
       puuid: job.puuid,
-      queueId: job.queueId,
+      targetQueueId: job.queueId,
       regionalRouting,
       startTime: job.startTime,
       endTime: job.endTime,
@@ -94,15 +94,16 @@ export class MatchIngestionService {
       start: job.start,
       count: job.count
     });
+    const unfilteredMatchIdsReturned = unfilteredMatchIds.length;
     const matchIds: string[] = [];
     const queueIdsFound: number[] = [];
     const skippedMatches: MatchDiscoveryJobResult["skippedMatches"] = [];
 
-    this.logger.info("Fetched recent Match-V5 IDs without queue filter for local queue filtering.", {
+    this.logger.info("Fetched recent Match-V5 IDs without Riot queue filter.", {
       jobId: job.jobId,
-      queueId: job.queueId,
+      targetQueueId: job.queueId,
       regionalRouting,
-      unfilteredMatchCount: unfilteredMatchIds.length,
+      unfilteredMatchIdsReturned,
       unfilteredMatchIds: unfilteredMatchIds.join(",")
     });
 
@@ -124,12 +125,14 @@ export class MatchIngestionService {
       }
     }
 
-    this.logger.info("Completed match ID discovery job.", {
+    this.logger.info("Completed local queue filtering for Match-V5 discovery.", {
       jobId: job.jobId,
-      queueId: job.queueId,
+      targetQueueId: job.queueId,
       regionalRouting,
-      matchesDiscovered: matchIds.length,
-      queueIdsFound: queueIdsFound.join(","),
+      unfilteredMatchIdsReturned,
+      localQueueIdsFound: queueIdsFound.join(","),
+      eligibleMatchIdsAfterLocalFilter: matchIds.join(","),
+      eligibleMatchCountAfterLocalFilter: matchIds.length,
       skippedMatchCount: skippedMatches.length
     });
 

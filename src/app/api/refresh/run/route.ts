@@ -4,6 +4,7 @@ import { isRefreshRequestAuthorized, unauthorizedRefreshResponse } from "@/app/a
 import { readJsonBody } from "@/app/api/refresh/requestUtils";
 import { toDatabaseError } from "@/lib/supabase/errors";
 import { createLogger } from "@/server/logging/logger";
+import { getDefaultMatchNormalizationOptions } from "@/server/ingestion";
 import type { RefreshRunResult } from "@/server/refresh";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,7 @@ function requestedKind(body: Partial<RefreshRunRequestBody>) {
 function createRunDebug(body: Partial<RefreshRunRequestBody>, result: RefreshRunResult) {
   const kind = requestedKind(body);
   const riotRefreshPuuids = readRefreshPuuids();
+  const queueConfig = getDefaultMatchNormalizationOptions();
 
   return {
     requestedKind: kind,
@@ -45,10 +47,10 @@ function createRunDebug(body: Partial<RefreshRunRequestBody>, result: RefreshRun
       riotRefreshMatchCount: process.env.RIOT_REFRESH_MATCH_COUNT ?? "20",
       riotRefreshLookbackHours: process.env.RIOT_REFRESH_LOOKBACK_HOURS ?? "24",
       defaultRegionalRouting: process.env.RIOT_DEFAULT_REGIONAL_ROUTING ?? "americas",
-      arenaQueueId: process.env.RIOT_ARENA_QUEUE_ID ?? "1700",
-      arenaQueueIds: process.env.RIOT_ARENA_QUEUE_IDS ?? "1700,1710",
-      aramMayhemQueueId: process.env.RIOT_ARAM_MAYHEM_QUEUE_ID ?? "2400",
-      aramMayhemQueueIds: process.env.RIOT_ARAM_MAYHEM_QUEUE_IDS ?? "2400"
+      arenaQueueId: queueConfig.arenaQueueId,
+      arenaQueueIds: queueConfig.arenaQueueIds,
+      aramMayhemQueueId: queueConfig.aramMayhemQueueId,
+      aramMayhemQueueIds: queueConfig.aramMayhemQueueIds
     },
     matchIngestion: result.result.matchIngestion.debug
   };
