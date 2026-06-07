@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { isSupabasePublicConfigAvailable } from "@/lib/supabase/config";
 import { safeSupabaseQuery } from "@/lib/supabase/errors";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient, createServiceRoleSupabaseClient } from "@/lib/supabase/server";
 import type {
   DbArenaChampionStatistic,
   DbAramMayhemChampionStatistic,
@@ -26,6 +26,8 @@ type SupabaseRowsQuery<T> = PromiseLike<{ data: T[] | null; error: unknown }>;
 type SupabaseFilterQuery<T> = SupabaseRowsQuery<T> & {
   eq(column: string, value: string): SupabaseFilterQuery<T>;
   in(column: string, values: string[]): SupabaseFilterQuery<T>;
+  limit(count: number): SupabaseFilterQuery<T>;
+  order(column: string, options?: { ascending?: boolean }): SupabaseFilterQuery<T>;
 };
 type SupabaseRawTable<T> = {
   select(columns: string): SupabaseFilterQuery<T>;
@@ -65,8 +67,56 @@ async function loadRows<T>(query: PromiseLike<{ data: T[] | null; error: unknown
   return result.error ? null : result.data;
 }
 
+function describeSupabaseError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return error ?? null;
+  }
+
+  const errorRecord = error as Record<string, unknown>;
+
+  return {
+    message: errorRecord.message,
+    code: errorRecord.code,
+    details: errorRecord.details,
+    hint: errorRecord.hint
+  };
+}
+
 function rawTable<T extends AnyRecord>(db: ReturnType<typeof createServerSupabaseClient>, table: string) {
   return (db as unknown as SupabaseRawClient).from<T>(table);
+}
+
+async function logServiceRolePatchLookupComparison() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.info("[MayhemGG patch lookup debug]", {
+      comparisonClient: "service-role",
+      skipped: true,
+      reason: "SUPABASE_SERVICE_ROLE_KEY is not configured."
+    });
+    return;
+  }
+
+  try {
+    const serviceDb = createServiceRoleSupabaseClient();
+    const serviceActivePatchResponse = await rawTable(serviceDb, "patches")
+      .select("*")
+      .eq("status", "active")
+      .limit(1);
+
+    console.info("[MayhemGG patch lookup debug]", {
+      comparisonClient: "service-role",
+      query: "patches.select(*).eq(status, active).limit(1)",
+      data: serviceActivePatchResponse.data,
+      error: describeSupabaseError(serviceActivePatchResponse.error),
+      rowCount: serviceActivePatchResponse.data?.length ?? null
+    });
+  } catch (error) {
+    console.error("[MayhemGG patch lookup error]", {
+      comparisonClient: "service-role",
+      query: "patches.select(*).eq(status, active).limit(1)",
+      error: error instanceof Error ? error.message : error
+    });
+  }
 }
 
 function field<T>(row: AnyRecord, snake: string, camel: string): T {
@@ -293,14 +343,75 @@ function mapChampionGuide(row: AnyRecord): DbChampionGuide {
 
 async function loadActivePatch() {
   const db = createServerSupabaseClient();
-  const activePatch = await loadRows(db.from("patches").select("*").eq("status", "active").limit(1), "Load active patch");
+  const activePatchResponse = await rawTable(db, "patches")
+    .select("*")
+    .eq("status", "active")
+    .limit(1);
 
-  if (activePatch?.[0]) {
-    return mapPatch(activePatch[0] as AnyRecord);
+  console.info("[MayhemGG patch lookup debug]", {
+    query: "patches.select(*).eq(status, active).limit(1)",
+    data: activePatchResponse.data,
+    error: describeSupabaseError(activePatchResponse.error),
+    rowCount: activePatchResponse.data?.length ?? null
+  });
+
+  if (activePatchResponse.error) {
+    console.error("[MayhemGG patch lookup error]", {
+      query: "patches.select(*).eq(status, active).limit(1)",
+      error: describeSupabaseError(activePatchResponse.error)
+    });
   }
 
-  const latestPatch = await loadRows(db.from("patches").select("*").limit(1), "Load latest patch");
-  return latestPatch?.[0] ? mapPatch(latestPatch[0] as AnyRecord) : null;
+  if (activePatchResponse.data?.[0]) {
+    const mappedPatch = mapPatch(activePatchResponse.data[0]);
+
+    console.info("[MayhemGG patch lookup debug]", {
+      selectedPatchSource: "active-status",
+      selectedPatch: mappedPatch
+    });
+
+    return mappedPatch;
+  }
+
+  const latestPatchResponse = await rawTable(db, "patches")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  console.info("[MayhemGG patch lookup debug]", {
+    query: "patches.select(*).order(created_at, desc).limit(1)",
+    data: latestPatchResponse.data,
+    error: describeSupabaseError(latestPatchResponse.error),
+    rowCount: latestPatchResponse.data?.length ?? null
+  });
+
+  if (latestPatchResponse.error) {
+    console.error("[MayhemGG patch lookup error]", {
+      query: "patches.select(*).order(created_at, desc).limit(1)",
+      error: describeSupabaseError(latestPatchResponse.error)
+    });
+  }
+
+  if (latestPatchResponse.data?.[0]) {
+    const mappedPatch = mapPatch(latestPatchResponse.data[0]);
+
+    console.info("[MayhemGG patch lookup debug]", {
+      selectedPatchSource: "latest-created-at",
+      selectedPatch: mappedPatch
+    });
+
+    return mappedPatch;
+  }
+
+  console.warn("[MayhemGG patch lookup debug]", {
+    selectedPatchSource: null,
+    selectedPatch: null,
+    reason: "No active patch row and no latest patch row were returned from Supabase."
+  });
+
+  await logServiceRolePatchLookupComparison();
+
+  return null;
 }
 
 export async function loadChampionPublishedDataDebugSnapshot(slug: string): Promise<ChampionPublishedDataDebugSnapshot> {
