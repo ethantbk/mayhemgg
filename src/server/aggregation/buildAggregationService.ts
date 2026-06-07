@@ -97,6 +97,33 @@ function buildStrengthScore(build: Pick<AggregatedChampionBuild, "winRate" | "ga
   return build.winRate + confidence + placementBoost;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function readPositiveNumber(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "number" && value > 0 ? value : null;
+}
+
+function getRawParticipantItemIds(participant: DbRiotMatchParticipant) {
+  const rawData = isRecord(participant.rawData) ? participant.rawData : {};
+
+  return [
+    readPositiveNumber(rawData, "item0"),
+    readPositiveNumber(rawData, "item1"),
+    readPositiveNumber(rawData, "item2"),
+    readPositiveNumber(rawData, "item3"),
+    readPositiveNumber(rawData, "item4"),
+    readPositiveNumber(rawData, "item5"),
+    readPositiveNumber(rawData, "item6")
+  ].filter((itemId): itemId is number => typeof itemId === "number");
+}
+
+function getParticipantItemIds(participant: DbRiotMatchParticipant) {
+  return [...new Set([...participant.itemIds, ...getRawParticipantItemIds(participant)])];
+}
+
 export class BuildAggregationService {
   private buildAggregationRepository: BuildAggregationRepository;
   private ingestionRunsRepository: IngestionRunsRepository;
@@ -198,7 +225,7 @@ export class BuildAggregationService {
       this.buildAggregationRepository.getMatchesForPatchAndMode(patchId, mode)
     ]);
     const participants = await this.buildAggregationRepository.getParticipantsForMatches(matches.map((match) => match.id));
-    const observedItemIds = participants.flatMap((participant) => participant.itemIds);
+    const observedItemIds = participants.flatMap(getParticipantItemIds);
     const items = await this.buildAggregationRepository.ensureItemsForRiotIds(observedItemIds);
     const itemsByRiotId = new Map(items.map((item) => [item.riotItemId, item]));
 
@@ -210,6 +237,8 @@ export class BuildAggregationService {
       championsWithRiotKey: champions.filter((champion) => champion.riotKey !== null).length,
       itemsLoaded: items.length,
       observedItemIdCount: new Set(observedItemIds).size,
+      participantsWithMappedItemIds: participants.filter((participant) => participant.itemIds.length > 0).length,
+      participantsWithRawItemIds: participants.filter((participant) => getRawParticipantItemIds(participant).length > 0).length,
       matchesProcessed: matches.length,
       participantsProcessed: participants.length
     });
@@ -275,12 +304,37 @@ export class BuildAggregationService {
     );
     const championGameTotals = new Map<string, number>();
     const buildCounters = new Map<string, BuildCounter>();
+    const skipReasons = {
+      missingChampion: 0,
+      noItemIdsAvailable: 0,
+      missingItemsCatalog: 0,
+      insufficientKnownItems: 0
+    };
 
     participants.forEach((participant) => {
       const champion = championsByRiotId.get(participant.riotChampionId);
-      const itemOrder = getStableItemOrder(participant.itemIds, itemsByRiotId);
+      const participantItemIds = getParticipantItemIds(participant);
+      const itemOrder = getStableItemOrder(participantItemIds, itemsByRiotId);
 
-      if (!champion || itemOrder.length < 2) return;
+      if (!champion) {
+        skipReasons.missingChampion += 1;
+        return;
+      }
+
+      if (!participantItemIds.length) {
+        skipReasons.noItemIdsAvailable += 1;
+        return;
+      }
+
+      if (!itemOrder.length) {
+        skipReasons.missingItemsCatalog += 1;
+        return;
+      }
+
+      if (itemOrder.length < 2) {
+        skipReasons.insufficientKnownItems += 1;
+        return;
+      }
 
       const itemSetKey = getItemSetKey(itemOrder);
       const counterKey = `${champion.id}:${itemSetKey}`;
@@ -306,6 +360,18 @@ export class BuildAggregationService {
       }
 
       buildCounters.set(counterKey, counter);
+    });
+
+    this.logger.info("Build aggregation participant skip summary.", {
+      mode,
+      participantsProcessed: participants.length,
+      participantsWithAnyItemIds: participants.filter((participant) => getParticipantItemIds(participant).length > 0).length,
+      knownItemsLoaded: itemsByRiotId.size,
+      buildCountersCreated: buildCounters.size,
+      skipMissingChampion: skipReasons.missingChampion,
+      skipNoItemIdsAvailable: skipReasons.noItemIdsAvailable,
+      skipMissingItemsCatalog: skipReasons.missingItemsCatalog,
+      skipInsufficientKnownItems: skipReasons.insufficientKnownItems
     });
 
     const buildsByChampion = new Map<string, AggregatedChampionBuild[]>();

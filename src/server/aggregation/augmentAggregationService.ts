@@ -95,6 +95,28 @@ function getParticipantAugmentIds(participant: DbRiotMatchParticipant) {
   return [...new Set([...participant.augmentIds, ...rawAugmentIds, ...keyedAugmentIds])];
 }
 
+function getRawParticipantAugmentIds(participant: DbRiotMatchParticipant) {
+  const rawData = isRecord(participant.rawData) ? participant.rawData : {};
+  const challenges = isRecord(rawData.challenges) ? rawData.challenges : {};
+  const rawAugmentIds = Array.isArray(challenges.augmentIds)
+    ? challenges.augmentIds.filter((augmentId): augmentId is number => typeof augmentId === "number" && augmentId > 0)
+    : [];
+  const keyedAugmentIds = [
+    getNumberValue(rawData, "playerAugment1"),
+    getNumberValue(rawData, "playerAugment2"),
+    getNumberValue(rawData, "playerAugment3"),
+    getNumberValue(rawData, "playerAugment4"),
+    getNumberValue(rawData, "playerAugment5"),
+    getNumberValue(rawData, "playerAugment6"),
+    getNumberValue(challenges, "playerAugment1"),
+    getNumberValue(challenges, "playerAugment2"),
+    getNumberValue(challenges, "playerAugment3"),
+    getNumberValue(challenges, "playerAugment4")
+  ].filter((augmentId): augmentId is number => typeof augmentId === "number");
+
+  return [...new Set([...rawAugmentIds, ...keyedAugmentIds])];
+}
+
 function sortChampionPairs(pairA: AggregatedChampionAugmentPair, pairB: AggregatedChampionAugmentPair) {
   const winRateDelta = pairB.winRate - pairA.winRate;
   if (winRateDelta !== 0) return winRateDelta;
@@ -213,6 +235,8 @@ export class AugmentAggregationService {
       championsWithRiotKey: champions.filter((champion) => champion.riotKey !== null).length,
       augmentsLoaded: augments.length,
       observedAugmentIdCount: new Set(observedAugmentIds).size,
+      participantsWithMappedAugmentIds: participants.filter((participant) => participant.augmentIds.length > 0).length,
+      participantsWithRawAugmentIds: participants.filter((participant) => getRawParticipantAugmentIds(participant).length > 0).length,
       matchesProcessed: matches.length,
       participantsProcessed: participants.length
     });
@@ -281,18 +305,33 @@ export class AugmentAggregationService {
     );
     const championGameTotals = new Map<string, number>();
     const augmentCounters = new Map<number, AugmentCounter>();
+    const skipReasons = {
+      noAugmentIdsAvailable: 0,
+      missingAugmentsCatalog: 0,
+      missingChampionForPair: 0
+    };
 
     participants.forEach((participant) => {
       const champion = championsByRiotId.get(participant.riotChampionId);
+      const participantAugmentIds = getParticipantAugmentIds(participant);
 
       if (champion) {
         championGameTotals.set(champion.id, (championGameTotals.get(champion.id) ?? 0) + 1);
+      } else {
+        skipReasons.missingChampionForPair += participantAugmentIds.length ? 1 : 0;
       }
 
-      getParticipantAugmentIds(participant).forEach((riotAugmentId) => {
+      if (!participantAugmentIds.length) {
+        skipReasons.noAugmentIdsAvailable += 1;
+      }
+
+      participantAugmentIds.forEach((riotAugmentId) => {
         const augment = augmentsByRiotId.get(riotAugmentId);
 
-        if (!augment) return;
+        if (!augment) {
+          skipReasons.missingAugmentsCatalog += 1;
+          return;
+        }
 
         const counter = augmentCounters.get(riotAugmentId) ?? {
           augment,
@@ -331,6 +370,17 @@ export class AugmentAggregationService {
 
         augmentCounters.set(riotAugmentId, counter);
       });
+    });
+
+    this.logger.info("Augment aggregation participant skip summary.", {
+      mode,
+      participantsProcessed: participants.length,
+      participantsWithAnyAugmentIds: participants.filter((participant) => getParticipantAugmentIds(participant).length > 0).length,
+      knownAugmentsLoaded: augmentsByRiotId.size,
+      augmentCountersCreated: augmentCounters.size,
+      skipNoAugmentIdsAvailable: skipReasons.noAugmentIdsAvailable,
+      skipMissingAugmentsCatalog: skipReasons.missingAugmentsCatalog,
+      skipMissingChampionForPair: skipReasons.missingChampionForPair
     });
 
     return [...augmentCounters.values()]

@@ -282,6 +282,12 @@ export class AugmentAggregationRepository {
     let augmentsPersisted = 0;
     let championPairsPersisted = 0;
 
+    if (!statistics.length) {
+      this.logger.warn("No aggregated augment statistics to persist.", {
+        augmentsAggregated: 0
+      });
+    }
+
     for (const statistic of statistics) {
       const persistedStatistic = await this.upsertAugmentStatistic(statistic);
       const pairsPersisted = await this.replaceBestChampionPairs(persistedStatistic.id, statistic);

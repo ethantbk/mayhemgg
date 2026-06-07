@@ -296,6 +296,13 @@ export class BuildAggregationRepository {
   async persistBuilds(builds: AggregatedChampionBuild[], itemsByRiotId: Map<number, DbItem>): Promise<PersistBuildAggregationResult> {
     let buildsPersisted = 0;
 
+    if (!builds.length) {
+      this.logger.warn("No aggregated builds to persist.", {
+        buildsAggregated: 0,
+        knownItemsLoaded: itemsByRiotId.size
+      });
+    }
+
     for (const build of builds) {
       const persistedBuild = await this.upsertBuild(build);
       await this.replaceBuildItems(persistedBuild.id, build.itemRiotIds, itemsByRiotId);

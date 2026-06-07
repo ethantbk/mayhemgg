@@ -44,6 +44,52 @@ export type DbRiotMatchParticipantRow = {
   updated_at: string;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function readPositiveNumber(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "number" && value > 0 ? value : null;
+}
+
+function readRawItemIds(rawData: JsonValue) {
+  if (!isRecord(rawData)) return [];
+
+  return [
+    readPositiveNumber(rawData, "item0"),
+    readPositiveNumber(rawData, "item1"),
+    readPositiveNumber(rawData, "item2"),
+    readPositiveNumber(rawData, "item3"),
+    readPositiveNumber(rawData, "item4"),
+    readPositiveNumber(rawData, "item5"),
+    readPositiveNumber(rawData, "item6")
+  ].filter((itemId): itemId is number => typeof itemId === "number");
+}
+
+function readRawAugmentIds(rawData: JsonValue) {
+  if (!isRecord(rawData)) return [];
+
+  const challenges = isRecord(rawData.challenges) ? rawData.challenges : {};
+  const challengeAugments = Array.isArray(challenges.augmentIds)
+    ? challenges.augmentIds.filter((augmentId): augmentId is number => typeof augmentId === "number" && augmentId > 0)
+    : [];
+  const keyedAugments = [
+    readPositiveNumber(rawData, "playerAugment1"),
+    readPositiveNumber(rawData, "playerAugment2"),
+    readPositiveNumber(rawData, "playerAugment3"),
+    readPositiveNumber(rawData, "playerAugment4"),
+    readPositiveNumber(rawData, "playerAugment5"),
+    readPositiveNumber(rawData, "playerAugment6"),
+    readPositiveNumber(challenges, "playerAugment1"),
+    readPositiveNumber(challenges, "playerAugment2"),
+    readPositiveNumber(challenges, "playerAugment3"),
+    readPositiveNumber(challenges, "playerAugment4")
+  ].filter((augmentId): augmentId is number => typeof augmentId === "number");
+
+  return [...new Set([...challengeAugments, ...keyedAugments])];
+}
+
 export function mapRiotMatch(row: DbRiotMatchRow): DbRiotMatch {
   return {
     id: row.id,
@@ -66,6 +112,9 @@ export function mapRiotMatch(row: DbRiotMatchRow): DbRiotMatch {
 }
 
 export function mapRiotMatchParticipant(row: DbRiotMatchParticipantRow): DbRiotMatchParticipant {
+  const rawItemIds = readRawItemIds(row.raw_data);
+  const rawAugmentIds = readRawAugmentIds(row.raw_data);
+
   return {
     id: row.id,
     matchId: row.match_id,
@@ -77,8 +126,8 @@ export function mapRiotMatchParticipant(row: DbRiotMatchParticipantRow): DbRiotM
     championName: row.champion_name,
     won: row.won,
     placement: row.placement,
-    itemIds: row.item_ids,
-    augmentIds: row.augment_ids,
+    itemIds: row.item_ids.length ? row.item_ids : rawItemIds,
+    augmentIds: row.augment_ids.length ? row.augment_ids : rawAugmentIds,
     kills: row.kills,
     deaths: row.deaths,
     assists: row.assists,
