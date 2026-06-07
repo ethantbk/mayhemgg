@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Flame, Gauge } from "lucide-react";
 import type { Build, Champion, Mode } from "@/types";
-import { getPatchLabel } from "@/lib/patchConfig";
 import { formatPercent, modeLabels } from "@/lib/utils";
 import { ChampionAvatar } from "@/components/ChampionAvatar";
 import { ItemPill } from "@/components/ItemPill";
@@ -12,13 +11,15 @@ export function BuildCard({
   mode,
   build,
   augments,
-  winRate
+  winRate,
+  patchLabel
 }: {
   champion: Champion;
   mode: Mode;
   build: Build;
   augments: string[];
   winRate: number;
+  patchLabel: string;
 }) {
   return (
     <article className="card-hover premium-border rounded-lg bg-panel/80 p-5 shadow-card">
@@ -29,7 +30,7 @@ export function BuildCard({
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-bold text-slate-400">{modeLabels[mode]}</p>
               <span className="rounded-md border border-frost/20 bg-frost/[0.08] px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] text-frost">
-                {getPatchLabel()}
+                {patchLabel}
               </span>
             </div>
             <h3 className="text-xl font-black text-white">{champion.name}</h3>

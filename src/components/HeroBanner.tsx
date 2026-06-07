@@ -3,11 +3,18 @@
 import Link from "next/link";
 import { ArrowRight, Flame, Sparkles, Trophy } from "lucide-react";
 import type { Champion } from "@/types";
-import { getPatchLabel } from "@/lib/patchConfig";
 import { ChampionAvatar } from "@/components/ChampionAvatar";
 import { ChampionSearchAutocomplete } from "@/components/ChampionSearchAutocomplete";
 
-export function HeroBanner({ champions }: { champions: Champion[] }) {
+export function HeroBanner({
+  champions,
+  patchLabel,
+  statusLabel
+}: {
+  champions: Champion[];
+  patchLabel: string;
+  statusLabel: string;
+}) {
   return (
     <section className="relative overflow-hidden border-b border-white/10">
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(135deg,rgba(66,214,255,0.18),transparent_32%),linear-gradient(45deg,rgba(255,107,61,0.12),transparent_36%),radial-gradient(circle_at_50%_18%,rgba(184,255,75,0.1),transparent_34%)]" />
@@ -16,7 +23,7 @@ export function HeroBanner({ champions }: { champions: Champion[] }) {
         <div>
           <div className="inline-flex items-center gap-2 rounded-md border border-volt/30 bg-volt/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-volt">
             <Sparkles className="h-4 w-4" aria-hidden="true" />
-            {getPatchLabel()} mock meta
+            {patchLabel} | {statusLabel}
           </div>
           <h1 className="mt-6 max-w-4xl text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-7xl">
             MayhemGG

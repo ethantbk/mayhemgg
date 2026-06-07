@@ -4,6 +4,7 @@ import { cache } from "react";
 import { isSupabasePublicConfigAvailable } from "@/lib/supabase/config";
 import { safeSupabaseQuery } from "@/lib/supabase/errors";
 import { createServerSupabaseClient, createServiceRoleSupabaseClient } from "@/lib/supabase/server";
+import { currentPatch, getPatchLabel } from "@/lib/patchConfig";
 import type {
   DbArenaChampionStatistic,
   DbAramMayhemChampionStatistic,
@@ -53,6 +54,15 @@ export type PublishedDataset = {
   championGuides: DbChampionGuide[];
 };
 
+export type PublishedDataSource = {
+  isLive: boolean;
+  patchVersion: string;
+  patchLabel: string;
+  statusLabel: string;
+  dataSourceLabel: string;
+  modesLabel: string;
+};
+
 export type ChampionPublishedDataDebugSnapshot = {
   supabaseConfigAvailable: boolean;
   patch: DbPatch | null;
@@ -61,6 +71,21 @@ export type ChampionPublishedDataDebugSnapshot = {
   mappedArenaStatisticRow: DbArenaChampionStatistic | null;
   error: string | null;
 };
+
+export function isLiveDataDebugEnabled() {
+  return process.env.MAYHEMGG_LIVE_DATA_DEBUG === "1";
+}
+
+function getFallbackPublishedDataSource(): PublishedDataSource {
+  return {
+    isLive: false,
+    patchVersion: currentPatch.version,
+    patchLabel: getPatchLabel(),
+    statusLabel: "Mock Fallback",
+    dataSourceLabel: "Mock dataset fallback",
+    modesLabel: currentPatch.modesLabel
+  };
+}
 
 async function loadRows<T>(query: PromiseLike<{ data: T[] | null; error: unknown }>, context: string) {
   const result = await safeSupabaseQuery(query, context);
@@ -87,6 +112,10 @@ function rawTable<T extends AnyRecord>(db: ReturnType<typeof createServerSupabas
 }
 
 async function logServiceRolePatchLookupComparison() {
+  if (!isLiveDataDebugEnabled()) {
+    return;
+  }
+
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.info("[MayhemGG patch lookup debug]", {
       comparisonClient: "service-role",
@@ -348,14 +377,16 @@ async function loadActivePatch() {
     .eq("status", "active")
     .limit(1);
 
-  console.info("[MayhemGG patch lookup debug]", {
-    query: "patches.select(*).eq(status, active).limit(1)",
-    data: activePatchResponse.data,
-    error: describeSupabaseError(activePatchResponse.error),
-    rowCount: activePatchResponse.data?.length ?? null
-  });
+  if (isLiveDataDebugEnabled()) {
+    console.info("[MayhemGG patch lookup debug]", {
+      query: "patches.select(*).eq(status, active).limit(1)",
+      data: activePatchResponse.data,
+      error: describeSupabaseError(activePatchResponse.error),
+      rowCount: activePatchResponse.data?.length ?? null
+    });
+  }
 
-  if (activePatchResponse.error) {
+  if (activePatchResponse.error && isLiveDataDebugEnabled()) {
     console.error("[MayhemGG patch lookup error]", {
       query: "patches.select(*).eq(status, active).limit(1)",
       error: describeSupabaseError(activePatchResponse.error)
@@ -365,10 +396,12 @@ async function loadActivePatch() {
   if (activePatchResponse.data?.[0]) {
     const mappedPatch = mapPatch(activePatchResponse.data[0]);
 
-    console.info("[MayhemGG patch lookup debug]", {
-      selectedPatchSource: "active-status",
-      selectedPatch: mappedPatch
-    });
+    if (isLiveDataDebugEnabled()) {
+      console.info("[MayhemGG patch lookup debug]", {
+        selectedPatchSource: "active-status",
+        selectedPatch: mappedPatch
+      });
+    }
 
     return mappedPatch;
   }
@@ -378,14 +411,16 @@ async function loadActivePatch() {
     .order("created_at", { ascending: false })
     .limit(1);
 
-  console.info("[MayhemGG patch lookup debug]", {
-    query: "patches.select(*).order(created_at, desc).limit(1)",
-    data: latestPatchResponse.data,
-    error: describeSupabaseError(latestPatchResponse.error),
-    rowCount: latestPatchResponse.data?.length ?? null
-  });
+  if (isLiveDataDebugEnabled()) {
+    console.info("[MayhemGG patch lookup debug]", {
+      query: "patches.select(*).order(created_at, desc).limit(1)",
+      data: latestPatchResponse.data,
+      error: describeSupabaseError(latestPatchResponse.error),
+      rowCount: latestPatchResponse.data?.length ?? null
+    });
+  }
 
-  if (latestPatchResponse.error) {
+  if (latestPatchResponse.error && isLiveDataDebugEnabled()) {
     console.error("[MayhemGG patch lookup error]", {
       query: "patches.select(*).order(created_at, desc).limit(1)",
       error: describeSupabaseError(latestPatchResponse.error)
@@ -395,19 +430,23 @@ async function loadActivePatch() {
   if (latestPatchResponse.data?.[0]) {
     const mappedPatch = mapPatch(latestPatchResponse.data[0]);
 
-    console.info("[MayhemGG patch lookup debug]", {
-      selectedPatchSource: "latest-created-at",
-      selectedPatch: mappedPatch
-    });
+    if (isLiveDataDebugEnabled()) {
+      console.info("[MayhemGG patch lookup debug]", {
+        selectedPatchSource: "latest-created-at",
+        selectedPatch: mappedPatch
+      });
+    }
 
     return mappedPatch;
   }
 
-  console.warn("[MayhemGG patch lookup debug]", {
-    selectedPatchSource: null,
-    selectedPatch: null,
-    reason: "No active patch row and no latest patch row were returned from Supabase."
-  });
+  if (isLiveDataDebugEnabled()) {
+    console.warn("[MayhemGG patch lookup debug]", {
+      selectedPatchSource: null,
+      selectedPatch: null,
+      reason: "No active patch row and no latest patch row were returned from Supabase."
+    });
+  }
 
   await logServiceRolePatchLookupComparison();
 
@@ -484,6 +523,23 @@ export async function loadChampionPublishedDataDebugSnapshot(slug: string): Prom
     };
   }
 }
+
+export const getPublishedDataSource = cache(async (): Promise<PublishedDataSource> => {
+  const dataset = await loadPublishedDataset();
+
+  if (!dataset) {
+    return getFallbackPublishedDataSource();
+  }
+
+  return {
+    isLive: true,
+    patchVersion: dataset.patch.version,
+    patchLabel: `Live Patch ${dataset.patch.version}`,
+    statusLabel: "Live Meta",
+    dataSourceLabel: "Supabase live dataset",
+    modesLabel: currentPatch.modesLabel
+  };
+});
 
 export const loadPublishedDataset = cache(async (): Promise<PublishedDataset | null> => {
   if (!isSupabasePublicConfigAvailable()) {

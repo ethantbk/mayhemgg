@@ -12,6 +12,7 @@ import { getAugments } from "@/server/repositories/augmentsRepository";
 import { getBrokenBuilds } from "@/server/repositories/buildsRepository";
 import { getChampions, getTopChampions } from "@/server/repositories/championsRepository";
 import { getChaosLabBuilds, getChaosLabCreators } from "@/server/repositories/chaosLabRepository";
+import { getPublishedDataSource } from "@/server/repositories/publishedDataset";
 
 export const metadata: Metadata = {
   title: "MayhemGG | ARAM Mayhem and Arena Builds",
@@ -22,8 +23,11 @@ export const metadata: Metadata = {
   }
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
-  const [champions, arenaChampions, aramChampions, brokenBuildsRaw, spotlightChampions, augmentsRaw, chaosBuilds, chaosCreators] = await Promise.all([
+  const [dataSource, champions, arenaChampions, aramChampions, brokenBuildsRaw, spotlightChampions, augmentsRaw, chaosBuilds, chaosCreators] = await Promise.all([
+    getPublishedDataSource(),
     getChampions(),
     getTopChampions("arena", 4),
     getTopChampions("aramMayhem", 4),
@@ -43,7 +47,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <HeroBanner champions={champions} />
+      <HeroBanner champions={champions} patchLabel={dataSource.patchLabel} statusLabel={dataSource.statusLabel} />
       <div className="mx-auto max-w-7xl space-y-16 px-4 py-12 sm:px-6 sm:py-14 lg:px-8 lg:py-16">
         <section>
           <SectionHeader

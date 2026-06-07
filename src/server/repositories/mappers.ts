@@ -99,6 +99,25 @@ export function mapDbBuild(row: DbBuild | undefined, maps: BuildRelationMaps): B
   };
 }
 
+export function withBuildContentFallback(build: Build | null, fallback?: Build): Build | null {
+  if (!build) {
+    return fallback ?? null;
+  }
+
+  if (!fallback) {
+    return build;
+  }
+
+  return {
+    ...build,
+    name: build.name || fallback.name,
+    itemOrder: build.itemOrder.length ? build.itemOrder : fallback.itemOrder,
+    fullBuild: build.fullBuild.length ? build.fullBuild : fallback.fullBuild,
+    explanation: build.explanation || fallback.explanation,
+    brokenScore: build.brokenScore ?? fallback.brokenScore
+  };
+}
+
 export function getAugmentSlugsForBuild(buildId: string | null | undefined, maps: BuildRelationMaps) {
   if (!buildId) return [];
 
@@ -243,10 +262,10 @@ export function mapDbChampion({
     preferredKind: "broken",
     buildsById
   });
-  const arenaBestBuild = mapDbBuild(arenaBestDbBuild, buildMaps) ?? fallbackChampion?.arenaStats.bestBuild;
-  const arenaBrokenBuild = mapDbBuild(arenaBrokenDbBuild, buildMaps) ?? fallbackChampion?.arenaStats.brokenBuild;
-  const aramBestBuild = mapDbBuild(aramBestDbBuild, buildMaps) ?? fallbackChampion?.aramMayhemStats.bestBuild;
-  const aramBrokenBuild = mapDbBuild(aramBrokenDbBuild, buildMaps) ?? fallbackChampion?.aramMayhemStats.brokenBuild;
+  const arenaBestBuild = withBuildContentFallback(mapDbBuild(arenaBestDbBuild, buildMaps), fallbackChampion?.arenaStats.bestBuild);
+  const arenaBrokenBuild = withBuildContentFallback(mapDbBuild(arenaBrokenDbBuild, buildMaps), fallbackChampion?.arenaStats.brokenBuild);
+  const aramBestBuild = withBuildContentFallback(mapDbBuild(aramBestDbBuild, buildMaps), fallbackChampion?.aramMayhemStats.bestBuild);
+  const aramBrokenBuild = withBuildContentFallback(mapDbBuild(aramBrokenDbBuild, buildMaps), fallbackChampion?.aramMayhemStats.brokenBuild);
 
   if (!arenaBestBuild || !arenaBrokenBuild || !aramBestBuild || !aramBrokenBuild) {
     return null;

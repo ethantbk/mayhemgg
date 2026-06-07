@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { BuildCard } from "@/components/BuildCard";
 import { SectionHeader } from "@/components/SectionHeader";
-import { getPatchLabel } from "@/lib/patchConfig";
 import { getAugments } from "@/server/repositories/augmentsRepository";
 import { getBrokenBuilds } from "@/server/repositories/buildsRepository";
+import { getPublishedDataSource } from "@/server/repositories/publishedDataset";
 
 export const metadata: Metadata = {
   title: "Broken Builds",
@@ -17,13 +17,13 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function BrokenBuildsPage() {
-  const [augments, builds] = await Promise.all([getAugments(), getBrokenBuilds()]);
+  const [dataSource, augments, builds] = await Promise.all([getPublishedDataSource(), getAugments(), getBrokenBuilds()]);
   const augmentNames = new Map(augments.map((augment) => [augment.id, augment.name]));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeader
-        eyebrow={`Meta Heat | ${getPatchLabel()}`}
+        eyebrow={`Meta Heat | ${dataSource.patchLabel}`}
         title="Broken Builds"
         description="Ranked strongest-first by broken score, combining win rate, augment abuse, item synergy, and mode-specific reliability."
       />
@@ -36,6 +36,7 @@ export default async function BrokenBuildsPage() {
             build={entry.build}
             augments={entry.augments.map((id) => augmentNames.get(id) ?? id)}
             winRate={entry.winRate}
+            patchLabel={dataSource.patchLabel}
           />
         ))}
       </div>

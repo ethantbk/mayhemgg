@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { SectionHeader } from "@/components/SectionHeader";
 import { TierListClient } from "@/components/TierListClient";
-import { getPatchLabel } from "@/lib/patchConfig";
 import { getChampionsByTier } from "@/server/repositories/tierListsRepository";
+import { getPublishedDataSource } from "@/server/repositories/publishedDataset";
 
 export const metadata: Metadata = {
   title: "Tier List",
@@ -16,7 +16,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function TierListPage() {
-  const [arenaChampionsByTier, aramChampionsByTier] = await Promise.all([
+  const [dataSource, arenaChampionsByTier, aramChampionsByTier] = await Promise.all([
+    getPublishedDataSource(),
     getChampionsByTier("arena"),
     getChampionsByTier("aramMayhem")
   ]);
@@ -24,11 +25,11 @@ export default async function TierListPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeader
-        eyebrow={`Rankings | ${getPatchLabel()}`}
+        eyebrow={`Rankings | ${dataSource.patchLabel}`}
         title="Champion Tier List"
         description="Mode-specific champion groups based on win rate, pick rate, build strength, and practical reliability."
       />
-      <TierListClient championsByMode={{ arena: arenaChampionsByTier, aramMayhem: aramChampionsByTier }} />
+      <TierListClient championsByMode={{ arena: arenaChampionsByTier, aramMayhem: aramChampionsByTier }} patchLabel={dataSource.patchLabel} />
     </div>
   );
 }

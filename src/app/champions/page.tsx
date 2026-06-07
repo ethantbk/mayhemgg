@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ChampionsExplorer } from "@/components/ChampionsExplorer";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getChampions } from "@/server/repositories/championsRepository";
+import { getPublishedDataSource } from "@/server/repositories/publishedDataset";
 
 export const metadata: Metadata = {
   title: "Champions",
@@ -15,12 +16,12 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function ChampionsPage() {
-  const champions = await getChampions();
+  const [dataSource, champions] = await Promise.all([getPublishedDataSource(), getChampions()]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeader
-        eyebrow="Champion Database"
+        eyebrow={`Champion Database | ${dataSource.patchLabel}`}
         title="All Champions"
         description="Search the roster, filter by role and mode, and jump into focused build guides for ARAM Mayhem and Arena."
       />

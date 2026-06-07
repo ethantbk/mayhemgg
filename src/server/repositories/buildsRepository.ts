@@ -2,7 +2,7 @@ import "server-only";
 
 import { getBrokenBuilds as getMockBrokenBuilds } from "@/lib/data";
 import type { Champion, Mode } from "@/types";
-import { dbModeToMode, getAugmentSlugsForBuild, mapDbBuild, type BuildRelationMaps } from "@/server/repositories/mappers";
+import { dbModeToMode, getAugmentSlugsForBuild, mapDbBuild, withBuildContentFallback, type BuildRelationMaps } from "@/server/repositories/mappers";
 import { mapDatasetToChampions } from "@/server/repositories/championsRepository";
 import { loadPublishedDataset, type PublishedDataset } from "@/server/repositories/publishedDataset";
 import type { BrokenBuildEntry } from "@/server/repositories/types";
@@ -43,7 +43,7 @@ function getStatBrokenBuilds({
     const champion = dbChampion ? championsBySlug.get(dbChampion.slug) : undefined;
     const dbBuild = buildsById.get(stat.brokenBuildId ?? stat.bestBuildId ?? "");
     const fallbackStats = champion ? (entryMode === "arena" ? champion.arenaStats : champion.aramMayhemStats) : undefined;
-    const mappedBuild = mapDbBuild(dbBuild, buildMaps) ?? fallbackStats?.brokenBuild;
+    const mappedBuild = withBuildContentFallback(mapDbBuild(dbBuild, buildMaps), fallbackStats?.brokenBuild);
 
     if (!champion || !mappedBuild) {
       return;
@@ -98,7 +98,7 @@ export async function getBrokenBuilds(mode?: Mode): Promise<BrokenBuildEntry[]> 
       return {
         champion,
         mode: entryMode,
-        build: mappedBuild,
+        build: withBuildContentFallback(mappedBuild, entryMode === "arena" ? champion.arenaStats.brokenBuild : champion.aramMayhemStats.brokenBuild) ?? mappedBuild,
         augments: getAugmentSlugsForBuild(build.id, buildMaps),
         winRate: build.winRate ?? stats.winRate
       } satisfies BrokenBuildEntry;

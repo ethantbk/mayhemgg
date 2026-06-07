@@ -11,6 +11,7 @@ import { modeToStatsKey, tierRank } from "@/lib/utils";
 import { mapDbChampion, type BuildRelationMaps } from "@/server/repositories/mappers";
 import {
   type ChampionPublishedDataDebugSnapshot,
+  isLiveDataDebugEnabled,
   loadChampionPublishedDataDebugSnapshot,
   loadPublishedDataset,
   type PublishedDataset
@@ -165,50 +166,52 @@ export async function getChampionBySlugWithDebug(slug: string): Promise<Champion
     fullMockFallbackUsed
   } = await loadChampionBySlugFromLiveRows(slug);
 
-  console.info("[MayhemGG /champions/[slug] data-loader debug]", {
-    requestedSlug: slug,
-    datasetLoaded: Boolean(dataset),
-    datasetSummary: dataset
-      ? {
-          patch: dataset.patch.version,
-          champions: dataset.champions.length,
-          arenaStats: dataset.arenaStats.length,
-          aramMayhemStats: dataset.aramMayhemStats.length,
-          builds: dataset.builds.length,
-          augments: dataset.augments.length
-        }
-      : null,
-    supabaseDebug: {
-      configAvailable: debugSnapshot.supabaseConfigAvailable,
-      error: debugSnapshot.error,
-      patch: debugSnapshot.patch
+  if (isLiveDataDebugEnabled()) {
+    console.info("[MayhemGG /champions/[slug] data-loader debug]", {
+      requestedSlug: slug,
+      datasetLoaded: Boolean(dataset),
+      datasetSummary: dataset
         ? {
-            id: debugSnapshot.patch.id,
-            version: debugSnapshot.patch.version,
-            status: debugSnapshot.patch.status
+            patch: dataset.patch.version,
+            champions: dataset.champions.length,
+            arenaStats: dataset.arenaStats.length,
+            aramMayhemStats: dataset.aramMayhemStats.length,
+            builds: dataset.builds.length,
+            augments: dataset.augments.length
           }
         : null,
-      resolvedChampionRow: debugSnapshot.champion
-        ? {
-            id: debugSnapshot.champion.id,
-            slug: debugSnapshot.champion.slug,
-            name: debugSnapshot.champion.name,
-            riotChampionId: debugSnapshot.champion.riotChampionId,
-            riotKey: debugSnapshot.champion.riotKey
-          }
-        : null,
-      rawArenaStatisticRowByChampionId: debugSnapshot.rawArenaStatisticRow,
-      mappedArenaStats: debugSnapshot.mappedArenaStatisticRow
-    },
-    selectedSources: {
-      liveChampionFound: Boolean(liveChampion),
-      fullMockFallbackUsed,
-      mockChampionAvailable: Boolean(mockChampion),
-      arenaStatsSource: liveChampion && debugSnapshot.mappedArenaStatisticRow ? "supabase" : "mock-or-missing",
-      finalUiModelSource: fullMockFallbackUsed ? "mock" : "repository"
-    },
-    finalUiModel: finalChampion ?? null
-  });
+      supabaseDebug: {
+        configAvailable: debugSnapshot.supabaseConfigAvailable,
+        error: debugSnapshot.error,
+        patch: debugSnapshot.patch
+          ? {
+              id: debugSnapshot.patch.id,
+              version: debugSnapshot.patch.version,
+              status: debugSnapshot.patch.status
+            }
+          : null,
+        resolvedChampionRow: debugSnapshot.champion
+          ? {
+              id: debugSnapshot.champion.id,
+              slug: debugSnapshot.champion.slug,
+              name: debugSnapshot.champion.name,
+              riotChampionId: debugSnapshot.champion.riotChampionId,
+              riotKey: debugSnapshot.champion.riotKey
+            }
+          : null,
+        rawArenaStatisticRowByChampionId: debugSnapshot.rawArenaStatisticRow,
+        mappedArenaStats: debugSnapshot.mappedArenaStatisticRow
+      },
+      selectedSources: {
+        liveChampionFound: Boolean(liveChampion),
+        fullMockFallbackUsed,
+        mockChampionAvailable: Boolean(mockChampion),
+        arenaStatsSource: liveChampion && debugSnapshot.mappedArenaStatisticRow ? "supabase" : "mock-or-missing",
+        finalUiModelSource: fullMockFallbackUsed ? "mock" : "repository"
+      },
+      finalUiModel: finalChampion ?? null
+    });
+  }
 
   return finalChampion;
 }

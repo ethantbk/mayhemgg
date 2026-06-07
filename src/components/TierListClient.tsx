@@ -4,13 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, TrendingUp } from "lucide-react";
 import type { Champion, Mode, Tier } from "@/types";
-import { getPatchLabel } from "@/lib/patchConfig";
 import { formatPercent, modeToStatsKey, tierOrder } from "@/lib/utils";
 import { ChampionAvatar } from "@/components/ChampionAvatar";
 import { ModeToggle } from "@/components/ModeToggle";
 import { TierBadge } from "@/components/TierBadge";
 
-export function TierListClient({ championsByMode }: { championsByMode: Record<Mode, Record<Tier, Champion[]>> }) {
+export function TierListClient({
+  championsByMode,
+  patchLabel
+}: {
+  championsByMode: Record<Mode, Record<Tier, Champion[]>>;
+  patchLabel: string;
+}) {
   const [mode, setMode] = useState<Mode>("arena");
   const tiers = championsByMode[mode];
 
@@ -23,7 +28,7 @@ export function TierListClient({ championsByMode }: { championsByMode: Record<Mo
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <span className="inline-flex rounded-md border border-frost/25 bg-frost/[0.08] px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-frost">
-            {getPatchLabel()}
+            {patchLabel}
           </span>
           <ModeToggle mode={mode} onChange={setMode} />
         </div>

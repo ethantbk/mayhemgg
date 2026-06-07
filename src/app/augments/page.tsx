@@ -3,6 +3,7 @@ import { AugmentCard } from "@/components/AugmentCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getAugments } from "@/server/repositories/augmentsRepository";
 import { getChampions } from "@/server/repositories/championsRepository";
+import { getPublishedDataSource } from "@/server/repositories/publishedDataset";
 
 export const metadata: Metadata = {
   title: "Augments",
@@ -13,14 +14,16 @@ export const metadata: Metadata = {
   }
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function AugmentsPage() {
-  const [champions, augmentsRaw] = await Promise.all([getChampions(), getAugments()]);
+  const [dataSource, champions, augmentsRaw] = await Promise.all([getPublishedDataSource(), getChampions(), getAugments()]);
   const augments = augmentsRaw.sort((a, b) => b.averageWinRate - a.averageWinRate);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeader
-        eyebrow="Augment Lab"
+        eyebrow={`Augment Lab | ${dataSource.patchLabel}`}
         title="Augments"
         description="Average win rate, pick rate, and best champion pairings for high-impact Arena and ARAM Mayhem augment choices."
       />

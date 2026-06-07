@@ -14,8 +14,8 @@ const configuredPatchVersion =
 export const currentPatch: PatchConfig = {
   version: configuredPatchVersion,
   dataDragonVersion: process.env.NEXT_PUBLIC_DDRAGON_VERSION ?? configuredPatchVersion,
-  statusLabel: process.env.NEXT_PUBLIC_PATCH_STATUS_LABEL ?? "Current Mock Meta",
-  dataSourceLabel: process.env.NEXT_PUBLIC_PATCH_DATA_SOURCE_LABEL ?? "Data Dragon-ready dataset",
+  statusLabel: process.env.NEXT_PUBLIC_PATCH_STATUS_LABEL ?? "Mock Fallback",
+  dataSourceLabel: process.env.NEXT_PUBLIC_PATCH_DATA_SOURCE_LABEL ?? "Mock dataset fallback",
   modesLabel: "Arena + ARAM Mayhem"
 };
 

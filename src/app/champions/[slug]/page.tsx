@@ -6,10 +6,10 @@ import { ChampionModeDetails } from "@/components/ChampionModeDetails";
 import { ChampionSplash } from "@/components/ChampionSplash";
 import { StatBox } from "@/components/StatBox";
 import { TierBadge } from "@/components/TierBadge";
-import { getPatchLabel } from "@/lib/patchConfig";
 import { formatPercent } from "@/lib/utils";
 import { getAugments } from "@/server/repositories/augmentsRepository";
 import { getChampionBySlug, getChampionBySlugWithDebug, getRelatedChampions } from "@/server/repositories/championsRepository";
+import { getPublishedDataSource } from "@/server/repositories/publishedDataset";
 
 type PageParams = Promise<{ slug: string }>;
 
@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: { params: PageParams }): Prom
 
 export default async function ChampionDetailsPage({ params }: { params: PageParams }) {
   const { slug } = await params;
-  const [champion, augments] = await Promise.all([getChampionBySlugWithDebug(slug), getAugments()]);
+  const [dataSource, champion, augments] = await Promise.all([getPublishedDataSource(), getChampionBySlugWithDebug(slug), getAugments()]);
 
   if (!champion) {
     notFound();
@@ -61,7 +61,7 @@ export default async function ChampionDetailsPage({ params }: { params: PagePara
                 <div className="mb-3 flex flex-wrap items-center gap-3">
                   <TierBadge tier={champion.tier} />
                   <span className="rounded-md border border-frost/[0.28] bg-frost/[0.08] px-2 py-1 text-xs font-black uppercase tracking-[0.14em] text-frost">
-                    {getPatchLabel()}
+                    {dataSource.patchLabel}
                   </span>
                   <span className="rounded-md border border-white/10 bg-white/[0.055] px-2 py-1 text-xs font-black uppercase tracking-[0.14em] text-slate-300">
                     {champion.role}
