@@ -10,6 +10,7 @@ import type { Champion, Mode } from "@/types";
 import { modeToStatsKey, tierRank } from "@/lib/utils";
 import { mapDbChampion, type BuildRelationMaps } from "@/server/repositories/mappers";
 import {
+  type ChampionPublishedDataDebugSnapshot,
   loadChampionPublishedDataDebugSnapshot,
   loadPublishedDataset,
   type PublishedDataset
@@ -28,18 +29,33 @@ function groupBy<T>(rows: T[], getKey: (row: T) => string) {
   return grouped;
 }
 
-export function mapDatasetToChampions(dataset: PublishedDataset): Champion[] {
-  const buildsById = new Map(dataset.builds.map((build) => [build.id, build]));
-  const arenaStatsByChampionId = new Map(dataset.arenaStats.map((stat) => [stat.championId, stat]));
-  const aramStatsByChampionId = new Map(dataset.aramMayhemStats.map((stat) => [stat.championId, stat]));
-  const guidesByChampionId = new Map(dataset.championGuides.map((guide) => [guide.championId, guide]));
-
-  const buildMaps: BuildRelationMaps = {
-    buildItemsByBuildId: groupBy(dataset.buildItems, (buildItem) => buildItem.buildId),
-    buildAugmentsByBuildId: groupBy(dataset.buildAugments, (buildAugment) => buildAugment.buildId),
-    itemsById: new Map(dataset.items.map((item) => [item.id, item])),
-    augmentsById: new Map(dataset.augments.map((augment) => [augment.id, augment]))
+function createBuildRelationMaps(dataset?: PublishedDataset): BuildRelationMaps {
+  return {
+    buildItemsByBuildId: groupBy(dataset?.buildItems ?? [], (buildItem) => buildItem.buildId),
+    buildAugmentsByBuildId: groupBy(dataset?.buildAugments ?? [], (buildAugment) => buildAugment.buildId),
+    itemsById: new Map((dataset?.items ?? []).map((item) => [item.id, item])),
+    augmentsById: new Map((dataset?.augments ?? []).map((augment) => [augment.id, augment]))
   };
+}
+
+function createPublishedDatasetIndexes(dataset?: PublishedDataset) {
+  return {
+    buildsById: new Map((dataset?.builds ?? []).map((build) => [build.id, build])),
+    arenaStatsByChampionId: new Map((dataset?.arenaStats ?? []).map((stat) => [stat.championId, stat])),
+    aramStatsByChampionId: new Map((dataset?.aramMayhemStats ?? []).map((stat) => [stat.championId, stat])),
+    guidesByChampionId: new Map((dataset?.championGuides ?? []).map((guide) => [guide.championId, guide])),
+    buildMaps: createBuildRelationMaps(dataset)
+  };
+}
+
+export function mapDatasetToChampions(dataset: PublishedDataset): Champion[] {
+  const {
+    buildsById,
+    arenaStatsByChampionId,
+    aramStatsByChampionId,
+    guidesByChampionId,
+    buildMaps
+  } = createPublishedDatasetIndexes(dataset);
 
   return dataset.champions
     .map((champion, index) =>
@@ -57,6 +73,76 @@ export function mapDatasetToChampions(dataset: PublishedDataset): Champion[] {
     .filter((champion): champion is Champion => Boolean(champion));
 }
 
+function mapResolvedChampionByChampionId({
+  dataset,
+  championId,
+  fallbackChampion,
+  debugSnapshot
+}: {
+  dataset: PublishedDataset | null;
+  championId: string;
+  fallbackChampion?: Champion;
+  debugSnapshot: Awaited<ReturnType<typeof loadChampionPublishedDataDebugSnapshot>>;
+}) {
+  const {
+    buildsById,
+    arenaStatsByChampionId,
+    aramStatsByChampionId,
+    guidesByChampionId,
+    buildMaps
+  } = createPublishedDatasetIndexes(dataset ?? undefined);
+  const resolvedChampion = debugSnapshot.champion ?? dataset?.champions.find((champion) => champion.id === championId);
+
+  if (!resolvedChampion) {
+    return null;
+  }
+
+  return mapDbChampion({
+    champion: resolvedChampion,
+    index: dataset?.champions.findIndex((champion) => champion.id === resolvedChampion.id) ?? 0,
+    arenaStat: debugSnapshot.mappedArenaStatisticRow ?? arenaStatsByChampionId.get(championId),
+    aramStat: aramStatsByChampionId.get(championId),
+    guide: guidesByChampionId.get(championId),
+    buildsById,
+    buildMaps,
+    fallbackChampion
+  });
+}
+
+async function loadChampionBySlugFromLiveRows(slug: string): Promise<{
+  dataset: PublishedDataset | null;
+  debugSnapshot: ChampionPublishedDataDebugSnapshot;
+  liveChampion: Champion | null;
+  mockChampion: Champion | undefined;
+  finalChampion: Champion | undefined;
+  fullMockFallbackUsed: boolean;
+}> {
+  const [dataset, debugSnapshot] = await Promise.all([
+    loadPublishedDataset(),
+    loadChampionPublishedDataDebugSnapshot(slug)
+  ]);
+  const mockChampion = getMockChampionBySlug(slug);
+  const resolvedChampionId = debugSnapshot.champion?.id ?? dataset?.champions.find((champion) => champion.slug === slug)?.id;
+  const liveChampion = resolvedChampionId
+    ? mapResolvedChampionByChampionId({
+        dataset,
+        championId: resolvedChampionId,
+        fallbackChampion: mockChampion,
+        debugSnapshot
+      })
+    : null;
+  const finalChampion = liveChampion ?? mockChampion;
+
+  return {
+    dataset,
+    debugSnapshot,
+    liveChampion,
+    mockChampion,
+    finalChampion,
+    fullMockFallbackUsed: !liveChampion && Boolean(mockChampion)
+  };
+}
+
 export async function getChampions(): Promise<Champion[]> {
   const dataset = await loadPublishedDataset();
   const champions = dataset ? mapDatasetToChampions(dataset) : [];
@@ -65,20 +151,19 @@ export async function getChampions(): Promise<Champion[]> {
 }
 
 export async function getChampionBySlug(slug: string): Promise<Champion | undefined> {
-  const champions = await getChampions();
-  return champions.find((champion) => champion.slug === slug) ?? getMockChampionBySlug(slug);
+  const { finalChampion } = await loadChampionBySlugFromLiveRows(slug);
+  return finalChampion;
 }
 
 export async function getChampionBySlugWithDebug(slug: string): Promise<Champion | undefined> {
-  const [dataset, debugSnapshot] = await Promise.all([
-    loadPublishedDataset(),
-    loadChampionPublishedDataDebugSnapshot(slug)
-  ]);
-  const liveChampions = dataset ? mapDatasetToChampions(dataset) : [];
-  const liveChampion = liveChampions.find((champion) => champion.slug === slug);
-  const mockChampion = getMockChampionBySlug(slug);
-  const finalChampion = liveChampion ?? mockChampion;
-  const fullMockFallbackUsed = !liveChampion && Boolean(mockChampion);
+  const {
+    dataset,
+    debugSnapshot,
+    liveChampion,
+    mockChampion,
+    finalChampion,
+    fullMockFallbackUsed
+  } = await loadChampionBySlugFromLiveRows(slug);
 
   console.info("[MayhemGG /champions/[slug] data-loader debug]", {
     requestedSlug: slug,
@@ -103,7 +188,7 @@ export async function getChampionBySlugWithDebug(slug: string): Promise<Champion
             status: debugSnapshot.patch.status
           }
         : null,
-      champion: debugSnapshot.champion
+      resolvedChampionRow: debugSnapshot.champion
         ? {
             id: debugSnapshot.champion.id,
             slug: debugSnapshot.champion.slug,
@@ -112,8 +197,8 @@ export async function getChampionBySlugWithDebug(slug: string): Promise<Champion
             riotKey: debugSnapshot.champion.riotKey
           }
         : null,
-      rawArenaStatisticRow: debugSnapshot.rawArenaStatisticRow,
-      mappedArenaStatisticRow: debugSnapshot.mappedArenaStatisticRow
+      rawArenaStatisticRowByChampionId: debugSnapshot.rawArenaStatisticRow,
+      mappedArenaStats: debugSnapshot.mappedArenaStatisticRow
     },
     selectedSources: {
       liveChampionFound: Boolean(liveChampion),

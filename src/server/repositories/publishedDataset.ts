@@ -104,7 +104,7 @@ function mapChampion(row: AnyRecord): DbChampion {
   return {
     id: directField<string>(row, "id"),
     riotChampionId: field<string>(row, "riot_champion_id", "riotChampionId"),
-    riotKey: field<number | null>(row, "riot_key", "riotKey"),
+    riotKey: nullableNumberField(row, "riot_key", "riotKey"),
     name: directField<string>(row, "name"),
     slug: directField<string>(row, "slug"),
     title: directField<string | null>(row, "title"),
