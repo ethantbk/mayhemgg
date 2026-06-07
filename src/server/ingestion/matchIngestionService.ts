@@ -47,13 +47,16 @@ function readQueueIds(name: string, value: string | undefined, fallback: number[
 }
 
 export function getDefaultMatchNormalizationOptions(): MatchNormalizationOptions {
-  const arenaQueueId = readQueueId("RIOT_ARENA_QUEUE_ID", process.env.RIOT_ARENA_QUEUE_ID, 1700);
+  const arenaQueueId = readQueueId("RIOT_ARENA_QUEUE_ID", process.env.RIOT_ARENA_QUEUE_ID, 1750);
   const aramMayhemQueueId = readQueueId("RIOT_ARAM_MAYHEM_QUEUE_ID", process.env.RIOT_ARAM_MAYHEM_QUEUE_ID, 2400);
 
   return {
     arenaQueueId,
     aramMayhemQueueId,
-    arenaQueueIds: readQueueIds("RIOT_ARENA_QUEUE_IDS", process.env.RIOT_ARENA_QUEUE_IDS, [...new Set([arenaQueueId, 1710])]),
+    arenaQueueIds: [...new Set([
+      ...readQueueIds("RIOT_ARENA_QUEUE_IDS", process.env.RIOT_ARENA_QUEUE_IDS, [arenaQueueId, 1700, 1710]),
+      1750
+    ])],
     aramMayhemQueueIds: readQueueIds("RIOT_ARAM_MAYHEM_QUEUE_IDS", process.env.RIOT_ARAM_MAYHEM_QUEUE_IDS, [...new Set([aramMayhemQueueId, 2400])])
   };
 }
