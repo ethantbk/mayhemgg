@@ -9,14 +9,11 @@ import { TierBadge } from "@/components/TierBadge";
 import { getPatchLabel } from "@/lib/patchConfig";
 import { formatPercent } from "@/lib/utils";
 import { getAugments } from "@/server/repositories/augmentsRepository";
-import { getChampions, getChampionBySlug, getRelatedChampions } from "@/server/repositories/championsRepository";
+import { getChampionBySlug, getRelatedChampions } from "@/server/repositories/championsRepository";
 
 type PageParams = Promise<{ slug: string }>;
 
-export async function generateStaticParams() {
-  const champions = await getChampions();
-  return champions.map((champion) => ({ slug: champion.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: PageParams }): Promise<Metadata> {
   const { slug } = await params;
@@ -84,7 +81,8 @@ export default async function ChampionDetailsPage({ params }: { params: PagePara
               <StatBox label="Arena Win" value={formatPercent(champion.arenaStats.winRate)} accent="text-volt" className="bg-volt/[0.08] ring-1 ring-volt/[0.18]" />
               <StatBox label="Mayhem Win" value={formatPercent(champion.aramMayhemStats.winRate)} accent="text-frost" className="bg-frost/[0.08] ring-1 ring-frost/[0.18]" />
               <StatBox label="Arena Pick" value={formatPercent(champion.arenaStats.pickRate)} accent="text-white" />
-              <StatBox label="Ban Rate" value={champion.arenaStats.banRate ? formatPercent(champion.arenaStats.banRate) : "N/A"} accent="text-ember" className="bg-ember/[0.08] ring-1 ring-ember/[0.16]" />
+              <StatBox label="Arena Games" value={champion.arenaStats.gamesPlayed?.toLocaleString() ?? "0"} accent="text-white" />
+              <StatBox label="Ban Rate" value={champion.arenaStats.banRate ? formatPercent(champion.arenaStats.banRate) : "N/A"} accent="text-ember" className="bg-ember/[0.08] ring-1 ring-ember/[0.16] sm:col-span-2" />
             </div>
           </div>
 

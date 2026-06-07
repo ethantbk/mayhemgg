@@ -14,6 +14,8 @@ export const metadata: Metadata = {
   }
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function BrokenBuildsPage() {
   const [augments, builds] = await Promise.all([getAugments(), getBrokenBuilds()]);
   const augmentNames = new Map(augments.map((augment) => [augment.id, augment.name]));

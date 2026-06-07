@@ -38,6 +38,7 @@ export type Augment = {
 export type ChampionModeStats = {
   winRate: number;
   pickRate: number;
+  gamesPlayed?: number;
   banRate?: number;
   bestBuild: Build;
   brokenBuild: Build;

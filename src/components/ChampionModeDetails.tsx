@@ -46,10 +46,14 @@ function ModeInsightCard({ champion, mode }: { champion: Champion; mode: Mode })
           ? `${champion.name} is strongest when the round slows down long enough to force ${stats.bestBuild.name} value. Prioritize partner spacing, first cooldown tracking, and the first takedown window.`
           : `${champion.name} converts constant ARAM Mayhem contact into repeatable pressure. Play around wave states, health pack timing, and choke points before committing to ${stats.brokenBuild.name}.`}
       </p>
-      <div className="mt-5 grid grid-cols-2 gap-3">
+      <div className="mt-5 grid grid-cols-3 gap-3">
         <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Pick Rate</p>
           <p className="mt-1 text-lg font-black text-white">{formatPercent(stats.pickRate)}</p>
+        </div>
+        <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Games</p>
+          <p className="mt-1 text-lg font-black text-white">{stats.gamesPlayed?.toLocaleString() ?? "0"}</p>
         </div>
         <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Broken</p>
@@ -86,10 +90,11 @@ export function ChampionModeDetails({
           </div>
           <ModeToggle mode={mode} onChange={setMode} />
         </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
           <StatBox label="Tier" value={champion.tier} accent="text-volt" className="bg-volt/[0.08] ring-1 ring-volt/[0.18]" />
           <StatBox label="Win Rate" value={formatPercent(stats.winRate)} accent="text-volt" className="bg-volt/[0.08] ring-1 ring-volt/[0.18]" />
           <StatBox label="Pick Rate" value={formatPercent(stats.pickRate)} accent="text-frost" />
+          <StatBox label="Games" value={stats.gamesPlayed?.toLocaleString() ?? "0"} accent="text-white" />
           <StatBox label="Broken" value={`${stats.brokenBuild.brokenScore}`} accent="text-ember" className="bg-ember/[0.08] ring-1 ring-ember/[0.16]" />
           <StatBox label="Difficulty" value={champion.difficulty} accent="text-white" />
         </div>

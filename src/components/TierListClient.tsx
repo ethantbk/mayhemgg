@@ -57,7 +57,7 @@ export function TierListClient({ championsByMode }: { championsByMode: Record<Mo
                     <p className="font-black text-white">{champion.name}</p>
                     <p className="text-xs font-bold text-slate-500">{champion.role} · {champion[modeToStatsKey(mode)].bestBuild.name}</p>
                   </div>
-                  <div className="col-span-2 grid grid-cols-[1fr_1fr_auto] items-center gap-3 border-t border-white/10 pt-3 text-left sm:col-span-1 sm:flex sm:border-t-0 sm:pt-0 sm:text-right">
+                  <div className="col-span-2 grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-3 border-t border-white/10 pt-3 text-left sm:col-span-1 sm:flex sm:border-t-0 sm:pt-0 sm:text-right">
                     <div>
                       <p className="text-sm font-black text-volt">{formatPercent(stats.winRate)}</p>
                       <p className="text-[11px] font-semibold text-slate-500">Win</p>
@@ -65,6 +65,10 @@ export function TierListClient({ championsByMode }: { championsByMode: Record<Mo
                     <div>
                       <p className="text-sm font-black text-white">{formatPercent(stats.pickRate)}</p>
                       <p className="text-[11px] font-semibold text-slate-500">Pick</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-white">{stats.gamesPlayed?.toLocaleString() ?? "0"}</p>
+                      <p className="text-[11px] font-semibold text-slate-500">Games</p>
                     </div>
                     <ArrowRight className="h-4 w-4 text-frost transition group-hover:translate-x-1" aria-hidden="true" />
                   </div>

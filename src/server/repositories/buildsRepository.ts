@@ -42,9 +42,10 @@ function getStatBrokenBuilds({
     const dbChampion = dbChampionsById.get(stat.championId);
     const champion = dbChampion ? championsBySlug.get(dbChampion.slug) : undefined;
     const dbBuild = buildsById.get(stat.brokenBuildId ?? stat.bestBuildId ?? "");
-    const mappedBuild = mapDbBuild(dbBuild, buildMaps);
+    const fallbackStats = champion ? (entryMode === "arena" ? champion.arenaStats : champion.aramMayhemStats) : undefined;
+    const mappedBuild = mapDbBuild(dbBuild, buildMaps) ?? fallbackStats?.brokenBuild;
 
-    if (!champion || !dbBuild || !mappedBuild) {
+    if (!champion || !mappedBuild) {
       return;
     }
 
@@ -52,8 +53,8 @@ function getStatBrokenBuilds({
       champion,
       mode: entryMode,
       build: stat.brokenScore == null ? mappedBuild : { ...mappedBuild, brokenScore: stat.brokenScore },
-      augments: getAugmentSlugsForBuild(dbBuild.id, buildMaps),
-      winRate: dbBuild.winRate ?? stat.winRate
+      augments: dbBuild ? getAugmentSlugsForBuild(dbBuild.id, buildMaps) : fallbackStats?.augments ?? [],
+      winRate: dbBuild?.winRate ?? stat.winRate
     });
   });
 

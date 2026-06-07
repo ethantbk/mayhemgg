@@ -21,7 +21,7 @@ export function ChampionCard({ champion, mode = "arena" }: { champion: Champion;
           <p className="mt-2 line-clamp-1 text-xs font-bold text-frost">{stats.bestBuild.name}</p>
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-3 rounded-md border border-white/10 bg-white/[0.035] p-3">
+      <div className="mt-5 grid grid-cols-3 gap-3 rounded-md border border-white/10 bg-white/[0.035] p-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Win Rate</p>
           <p className="mt-1 text-xl font-black text-volt">{formatPercent(stats.winRate)}</p>
@@ -29,6 +29,10 @@ export function ChampionCard({ champion, mode = "arena" }: { champion: Champion;
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Pick Rate</p>
           <p className="mt-1 text-xl font-black text-white">{formatPercent(stats.pickRate)}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Games</p>
+          <p className="mt-1 text-xl font-black text-white">{stats.gamesPlayed?.toLocaleString() ?? "0"}</p>
         </div>
       </div>
       <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4 text-sm font-bold text-slate-400">

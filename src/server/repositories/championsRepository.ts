@@ -46,7 +46,8 @@ export function mapDatasetToChampions(dataset: PublishedDataset): Champion[] {
         aramStat: aramStatsByChampionId.get(champion.id),
         guide: guidesByChampionId.get(champion.id),
         buildsById,
-        buildMaps
+        buildMaps,
+        fallbackChampion: getMockChampionBySlug(champion.slug)
       })
     )
     .filter((champion): champion is Champion => Boolean(champion));
