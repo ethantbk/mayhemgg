@@ -142,7 +142,9 @@ export class ChampionAggregationService {
           mode: job.mode,
           championId: job.championId,
           matchesProcessed: result.matchesProcessed,
-          championsAggregated: result.championsAggregated
+          participantsProcessed: result.participantsProcessed,
+          championsAggregated: result.championsAggregated,
+          statsPersisted: result.statsPersisted
         })
       });
       await this.ingestionJobsRepository.markSucceeded(
@@ -150,7 +152,8 @@ export class ChampionAggregationService {
         toJsonValue({
           matchesProcessed: result.matchesProcessed,
           participantsProcessed: result.participantsProcessed,
-          championsAggregated: result.championsAggregated
+          championsAggregated: result.championsAggregated,
+          statsPersisted: result.statsPersisted
         })
       );
 
@@ -201,6 +204,18 @@ export class ChampionAggregationService {
       this.statisticsRepository.getMatchesForPatchAndMode(patchId, mode)
     ]);
     const participants = await this.statisticsRepository.getParticipantsForMatches(matches.map((match) => match.id));
+
+    this.logger.info("Loaded champion aggregation inputs.", {
+      jobId,
+      patchId,
+      mode,
+      championsLoaded: champions.length,
+      championsWithRiotKey: champions.filter((champion) => champion.riotKey !== null).length,
+      matchesProcessed: matches.length,
+      queueIds: [...new Set(matches.map((match) => match.queueId))].join(","),
+      participantsProcessed: participants.length
+    });
+
     const statistics = this.aggregateStatistics({
       patchId,
       mode,
@@ -209,8 +224,17 @@ export class ChampionAggregationService {
       participants,
       championId
     });
+    const persistResult = await this.statisticsRepository.persistChampionStatistics(mode, statistics);
 
-    await this.statisticsRepository.persistChampionStatistics(mode, statistics);
+    this.logger.info("Persisted champion aggregation output.", {
+      jobId,
+      patchId,
+      mode,
+      matchesProcessed: matches.length,
+      participantsProcessed: participants.length,
+      championsAggregated: statistics.length,
+      statsPersisted: persistResult.rowsPersisted
+    });
 
     const result = {
       jobId,
@@ -219,6 +243,7 @@ export class ChampionAggregationService {
       matchesProcessed: matches.length,
       participantsProcessed: participants.length,
       championsAggregated: statistics.length,
+      statsPersisted: persistResult.rowsPersisted,
       statistics
     } satisfies ChampionAggregationResult;
 
@@ -229,6 +254,7 @@ export class ChampionAggregationService {
       matchesProcessed: result.matchesProcessed,
       participantsProcessed: result.participantsProcessed,
       championsAggregated: result.championsAggregated,
+      statsPersisted: result.statsPersisted,
       championId
     });
 

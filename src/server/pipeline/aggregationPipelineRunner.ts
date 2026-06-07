@@ -110,7 +110,8 @@ function resultMetadata(result: AggregationPipelineResult): JsonValue {
       mode: entry.mode,
       matchesProcessed: entry.matchesProcessed,
       participantsProcessed: entry.participantsProcessed,
-      championsAggregated: entry.championsAggregated
+      championsAggregated: entry.championsAggregated,
+      statsPersisted: entry.statsPersisted
     })),
     buildAggregation: result.phases.buildAggregation.map((entry) => ({
       mode: entry.mode,
@@ -251,7 +252,7 @@ export class AggregationPipelineRunner {
       const recordsProcessed =
         matchIngestion.matchesPersisted +
         matchIngestion.participantsPersisted +
-        championAggregation.reduce((sum, entry) => sum + entry.championsAggregated, 0) +
+        championAggregation.reduce((sum, entry) => sum + entry.statsPersisted, 0) +
         buildAggregation.reduce((sum, entry) => sum + entry.buildsPersisted, 0) +
         augmentAggregation.reduce((sum, entry) => sum + entry.augmentsAggregated + entry.championPairsPersisted, 0) +
         brokenScoreGeneration.reduce((sum, entry) => sum + entry.scoresPersisted, 0);

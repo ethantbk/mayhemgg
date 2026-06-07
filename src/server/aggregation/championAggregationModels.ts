@@ -44,5 +44,6 @@ export type ChampionAggregationResult = {
   matchesProcessed: number;
   participantsProcessed: number;
   championsAggregated: number;
+  statsPersisted: number;
   statistics: AggregatedChampionStatistic[];
 };
