@@ -39,8 +39,8 @@ function getParticipantPlacement(participant: RiotMatchParticipantDto) {
 }
 
 function mapQueueToMode(queueId: number, options: MatchNormalizationOptions): IngestionGameMode {
-  if (queueId === options.arenaQueueId) return "arena";
-  if (queueId === options.aramMayhemQueueId) return "aram_mayhem";
+  if (options.arenaQueueIds.includes(queueId)) return "arena";
+  if (options.aramMayhemQueueIds.includes(queueId)) return "aram_mayhem";
   return "unknown";
 }
 

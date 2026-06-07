@@ -61,20 +61,20 @@ function dailyMatchIngestionOptions(modes: AggregationPipelineMode[]): Aggregati
   const endTime = Math.floor(Date.now() / 1000);
   const startTime = endTime - lookbackHours * 60 * 60;
   const queueIds = getDefaultMatchNormalizationOptions();
-  const modeQueueIds: Record<AggregationPipelineMode, number> = {
-    arena: queueIds.arenaQueueId,
-    aram_mayhem: queueIds.aramMayhemQueueId
+  const modeQueueIds: Record<AggregationPipelineMode, number[]> = {
+    arena: queueIds.arenaQueueIds,
+    aram_mayhem: queueIds.aramMayhemQueueIds
   };
 
   return {
     discoverySources: puuids.flatMap((puuid) =>
-      modes.map((mode) => ({
+      modes.flatMap((mode) => modeQueueIds[mode].map((queueId) => ({
         puuid,
-        queueId: modeQueueIds[mode],
+        queueId,
         startTime,
         endTime,
         count
-      }))
+      })))
     ),
     continueOnMatchError: true
   };

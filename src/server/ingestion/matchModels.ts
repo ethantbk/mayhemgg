@@ -42,4 +42,6 @@ export type NormalizedMatch = {
 export type MatchNormalizationOptions = {
   arenaQueueId: number;
   aramMayhemQueueId: number;
+  arenaQueueIds: number[];
+  aramMayhemQueueIds: number[];
 };

@@ -428,8 +428,12 @@ export class AggregationPipelineRunner {
             endTime: entry.endTime,
             start: entry.start,
             count: entry.count,
+            discoveryStrategy: entry.discoveryStrategy,
+            unfilteredMatchIds: entry.unfilteredMatchIds,
+            queueIdsFound: entry.queueIdsFound,
             matchIdsReturned: entry.matchIds,
-            matchCount: entry.matchIds.length
+            matchCount: entry.matchIds.length,
+            skippedMatches: entry.skippedMatches
           })),
           fetchedMatches: persistedMatches.map((entry) => ({
             riotMatchId: entry.riotMatchId,
@@ -526,10 +530,14 @@ export class AggregationPipelineRunner {
           puuid: result.puuid,
           queueId: result.queueId,
           regionalRouting: result.regionalRouting,
+          discoveryStrategy: result.discoveryStrategy,
           startTime: result.startTime,
           endTime: result.endTime,
           start: result.start,
           count: result.count,
+          unfilteredMatchIds: result.unfilteredMatchIds,
+          queueIdsFound: result.queueIdsFound,
+          skippedMatches: result.skippedMatches,
           matchesDiscovered: result.matchIds.length,
           matchIds: result.matchIds
         })

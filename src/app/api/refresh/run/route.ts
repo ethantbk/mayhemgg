@@ -46,7 +46,9 @@ function createRunDebug(body: Partial<RefreshRunRequestBody>, result: RefreshRun
       riotRefreshLookbackHours: process.env.RIOT_REFRESH_LOOKBACK_HOURS ?? "24",
       defaultRegionalRouting: process.env.RIOT_DEFAULT_REGIONAL_ROUTING ?? "americas",
       arenaQueueId: process.env.RIOT_ARENA_QUEUE_ID ?? "1700",
-      aramMayhemQueueId: process.env.RIOT_ARAM_MAYHEM_QUEUE_ID ?? "450"
+      arenaQueueIds: process.env.RIOT_ARENA_QUEUE_IDS ?? "1700,1710",
+      aramMayhemQueueId: process.env.RIOT_ARAM_MAYHEM_QUEUE_ID ?? "2400",
+      aramMayhemQueueIds: process.env.RIOT_ARAM_MAYHEM_QUEUE_IDS ?? "2400"
     },
     matchIngestion: result.result.matchIngestion.debug
   };

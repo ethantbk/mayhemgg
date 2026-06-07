@@ -31,6 +31,15 @@ export type MatchDiscoveryJobResult = {
   endTime?: number;
   start?: number;
   count?: number;
+  discoveryStrategy: "unfiltered-matchlist-local-queue-filter";
+  unfilteredMatchIds: string[];
+  queueIdsFound: number[];
+  skippedMatches: Array<{
+    riotMatchId: string;
+    queueId: number;
+    gameMode: string;
+    reason: string;
+  }>;
   matchIds: string[];
 };
 

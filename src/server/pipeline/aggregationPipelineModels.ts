@@ -51,8 +51,17 @@ export type MatchIngestionPipelineResult = {
       endTime?: number;
       start?: number;
       count?: number;
+      discoveryStrategy: string;
+      unfilteredMatchIds: string[];
+      queueIdsFound: number[];
       matchIdsReturned: string[];
       matchCount: number;
+      skippedMatches: Array<{
+        riotMatchId: string;
+        queueId: number;
+        gameMode: string;
+        reason: string;
+      }>;
     }>;
     fetchedMatches: Array<{
       riotMatchId: string;
