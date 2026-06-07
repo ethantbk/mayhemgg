@@ -47,6 +47,16 @@ type AcquireExclusiveJobInput = UpsertJobInput & {
   lockTtlMs?: number;
 };
 
+export type ClearStaleIngestionLocksInput = {
+  staleAfterMs?: number;
+};
+
+export type ClearStaleIngestionLocksResult = {
+  clearedJobIds: string[];
+  clearedJobs: DbIngestionJob[];
+  cutoff: string;
+};
+
 function getRiotMatchId(job: TrackableIngestionJob) {
   return job.type === "match-fetch" ? job.riotMatchId : null;
 }
@@ -213,6 +223,69 @@ export class IngestionJobsRepository {
       errorMessage: databaseError.message,
       metadata: toJsonValue({ error: databaseError.message })
     });
+  }
+
+  async clearStaleLocks(input: ClearStaleIngestionLocksInput = {}): Promise<ClearStaleIngestionLocksResult> {
+    const staleAfterMs = input.staleAfterMs ?? 10 * 60 * 1000;
+    const cutoff = new Date(Date.now() - staleAfterMs).toISOString();
+
+    try {
+      const db = createServiceRoleSupabaseClient();
+      const runningResponse = await db
+        .from("ingestion_jobs")
+        .update(toIngestionJobWrite({
+          status: "retryable_failed",
+          lockedAt: null,
+          finishedAt: new Date().toISOString(),
+          errorMessage: `Stale refresh lock cleared after ${Math.round(staleAfterMs / 60000)} minutes.`,
+          metadata: toJsonValue({
+            unlockedBy: "refresh-unlock",
+            reason: "stale-running-lock",
+            cutoff
+          })
+        }) as never)
+        .eq("status", "running")
+        .not("locked_at", "is", null)
+        .lte("locked_at", cutoff)
+        .select("*");
+      const failedResponse = await db
+        .from("ingestion_jobs")
+        .update(toIngestionJobWrite({
+          lockedAt: null,
+          metadata: toJsonValue({
+            unlockedBy: "refresh-unlock",
+            reason: "failed-job-lock",
+            cutoff
+          })
+        }) as never)
+        .in("status", ["retryable_failed", "rate_limited", "permanently_failed"])
+        .not("locked_at", "is", null)
+        .select("*");
+      const clearedJobs = [
+        ...unwrapSupabaseResponse(runningResponse, "Clear stale running ingestion locks").map(mapIngestionJob),
+        ...unwrapSupabaseResponse(failedResponse, "Clear failed ingestion job locks").map(mapIngestionJob)
+      ];
+      const clearedJobIds = [...new Set(clearedJobs.map((job) => job.jobId))];
+
+      this.logger.warn("Cleared stale ingestion job locks.", {
+        clearedJobCount: clearedJobIds.length,
+        clearedJobIds: clearedJobIds.join(","),
+        cutoff
+      });
+
+      return {
+        clearedJobIds,
+        clearedJobs,
+        cutoff
+      };
+    } catch (error) {
+      const databaseError = toDatabaseError(error, "Clear stale ingestion job locks");
+      this.logger.error("Failed to clear stale ingestion job locks.", {
+        error: databaseError.message,
+        cutoff
+      });
+      throw databaseError;
+    }
   }
 
   private async updateStatus(jobId: string, values: Partial<NewDbIngestionJob>): Promise<DbIngestionJob> {
