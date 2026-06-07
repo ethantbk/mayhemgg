@@ -64,6 +64,37 @@ function parseRiotAugmentId(value: string | null) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function getNumberValue(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "number" && value > 0 ? value : null;
+}
+
+function getParticipantAugmentIds(participant: DbRiotMatchParticipant) {
+  const rawData = isRecord(participant.rawData) ? participant.rawData : {};
+  const challenges = isRecord(rawData.challenges) ? rawData.challenges : {};
+  const rawAugmentIds = Array.isArray(challenges.augmentIds)
+    ? challenges.augmentIds.filter((augmentId): augmentId is number => typeof augmentId === "number" && augmentId > 0)
+    : [];
+  const keyedAugmentIds = [
+    getNumberValue(rawData, "playerAugment1"),
+    getNumberValue(rawData, "playerAugment2"),
+    getNumberValue(rawData, "playerAugment3"),
+    getNumberValue(rawData, "playerAugment4"),
+    getNumberValue(rawData, "playerAugment5"),
+    getNumberValue(rawData, "playerAugment6"),
+    getNumberValue(challenges, "playerAugment1"),
+    getNumberValue(challenges, "playerAugment2"),
+    getNumberValue(challenges, "playerAugment3"),
+    getNumberValue(challenges, "playerAugment4")
+  ].filter((augmentId): augmentId is number => typeof augmentId === "number");
+
+  return [...new Set([...participant.augmentIds, ...rawAugmentIds, ...keyedAugmentIds])];
+}
+
 function sortChampionPairs(pairA: AggregatedChampionAugmentPair, pairB: AggregatedChampionAugmentPair) {
   const winRateDelta = pairB.winRate - pairA.winRate;
   if (winRateDelta !== 0) return winRateDelta;
@@ -166,12 +197,26 @@ export class AugmentAggregationService {
       mode
     });
 
-    const [champions, augments, matches] = await Promise.all([
+    const [champions, matches] = await Promise.all([
       this.augmentAggregationRepository.getChampions(),
-      this.augmentAggregationRepository.getAugments(),
       this.augmentAggregationRepository.getMatchesForPatchAndMode(patchId, mode)
     ]);
     const participants = await this.augmentAggregationRepository.getParticipantsForMatches(matches.map((match) => match.id));
+    const observedAugmentIds = participants.flatMap(getParticipantAugmentIds);
+    const augments = await this.augmentAggregationRepository.ensureAugmentsForRiotIds(observedAugmentIds);
+
+    this.logger.info("Loaded augment aggregation inputs.", {
+      jobId: options.jobId,
+      patchId,
+      mode,
+      championsLoaded: champions.length,
+      championsWithRiotKey: champions.filter((champion) => champion.riotKey !== null).length,
+      augmentsLoaded: augments.length,
+      observedAugmentIdCount: new Set(observedAugmentIds).size,
+      matchesProcessed: matches.length,
+      participantsProcessed: participants.length
+    });
+
     const statistics = this.aggregateAugments({
       patchId,
       mode,
@@ -244,7 +289,7 @@ export class AugmentAggregationService {
         championGameTotals.set(champion.id, (championGameTotals.get(champion.id) ?? 0) + 1);
       }
 
-      Array.from(new Set(participant.augmentIds)).forEach((riotAugmentId) => {
+      getParticipantAugmentIds(participant).forEach((riotAugmentId) => {
         const augment = augmentsByRiotId.get(riotAugmentId);
 
         if (!augment) return;

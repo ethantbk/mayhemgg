@@ -92,6 +92,12 @@ export type RiotMatchParticipantDto = {
   objectivesStolen?: number;
   objectivesStolenAssists?: number;
   participantId: number;
+  playerAugment1?: number;
+  playerAugment2?: number;
+  playerAugment3?: number;
+  playerAugment4?: number;
+  playerAugment5?: number;
+  playerAugment6?: number;
   pentaKills?: number;
   perks?: {
     statPerks?: Record<string, number>;

@@ -23,6 +23,14 @@ function getParticipantItems(participant: RiotMatchParticipantDto) {
 
 function getParticipantAugments(participant: RiotMatchParticipantDto) {
   const challengeAugments = participant.challenges?.augmentIds ?? [];
+  const participantAugments = [
+    participant.playerAugment1,
+    participant.playerAugment2,
+    participant.playerAugment3,
+    participant.playerAugment4,
+    participant.playerAugment5,
+    participant.playerAugment6
+  ].filter((augmentId): augmentId is number => typeof augmentId === "number" && augmentId > 0);
   const keyedAugments = [
     participant.challenges?.playerAugment1,
     participant.challenges?.playerAugment2,
@@ -30,7 +38,7 @@ function getParticipantAugments(participant: RiotMatchParticipantDto) {
     participant.challenges?.playerAugment4
   ].filter((augmentId): augmentId is number => typeof augmentId === "number" && augmentId > 0);
 
-  return [...new Set([...challengeAugments, ...keyedAugments])];
+  return [...new Set([...challengeAugments, ...participantAugments, ...keyedAugments])];
 }
 
 function getParticipantPlacement(participant: RiotMatchParticipantDto) {

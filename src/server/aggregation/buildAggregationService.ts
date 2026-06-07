@@ -193,13 +193,27 @@ export class BuildAggregationService {
       championId: options.championId
     });
 
-    const [champions, items, matches] = await Promise.all([
+    const [champions, matches] = await Promise.all([
       this.buildAggregationRepository.getChampions(),
-      this.buildAggregationRepository.getItems(),
       this.buildAggregationRepository.getMatchesForPatchAndMode(patchId, mode)
     ]);
     const participants = await this.buildAggregationRepository.getParticipantsForMatches(matches.map((match) => match.id));
+    const observedItemIds = participants.flatMap((participant) => participant.itemIds);
+    const items = await this.buildAggregationRepository.ensureItemsForRiotIds(observedItemIds);
     const itemsByRiotId = new Map(items.map((item) => [item.riotItemId, item]));
+
+    this.logger.info("Loaded build aggregation inputs.", {
+      jobId: options.jobId,
+      patchId,
+      mode,
+      championsLoaded: champions.length,
+      championsWithRiotKey: champions.filter((champion) => champion.riotKey !== null).length,
+      itemsLoaded: items.length,
+      observedItemIdCount: new Set(observedItemIds).size,
+      matchesProcessed: matches.length,
+      participantsProcessed: participants.length
+    });
+
     const builds = this.aggregateBuilds({
       patchId,
       mode,
