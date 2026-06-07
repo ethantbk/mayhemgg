@@ -9,7 +9,7 @@ import { TierBadge } from "@/components/TierBadge";
 import { getPatchLabel } from "@/lib/patchConfig";
 import { formatPercent } from "@/lib/utils";
 import { getAugments } from "@/server/repositories/augmentsRepository";
-import { getChampionBySlug, getRelatedChampions } from "@/server/repositories/championsRepository";
+import { getChampionBySlug, getChampionBySlugWithDebug, getRelatedChampions } from "@/server/repositories/championsRepository";
 
 type PageParams = Promise<{ slug: string }>;
 
@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: { params: PageParams }): Prom
 
 export default async function ChampionDetailsPage({ params }: { params: PageParams }) {
   const { slug } = await params;
-  const [champion, augments] = await Promise.all([getChampionBySlug(slug), getAugments()]);
+  const [champion, augments] = await Promise.all([getChampionBySlugWithDebug(slug), getAugments()]);
 
   if (!champion) {
     notFound();

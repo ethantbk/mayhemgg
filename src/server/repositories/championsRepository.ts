@@ -9,7 +9,11 @@ import {
 import type { Champion, Mode } from "@/types";
 import { modeToStatsKey, tierRank } from "@/lib/utils";
 import { mapDbChampion, type BuildRelationMaps } from "@/server/repositories/mappers";
-import { loadPublishedDataset, type PublishedDataset } from "@/server/repositories/publishedDataset";
+import {
+  loadChampionPublishedDataDebugSnapshot,
+  loadPublishedDataset,
+  type PublishedDataset
+} from "@/server/repositories/publishedDataset";
 
 function groupBy<T>(rows: T[], getKey: (row: T) => string) {
   const grouped = new Map<string, T[]>();
@@ -63,6 +67,65 @@ export async function getChampions(): Promise<Champion[]> {
 export async function getChampionBySlug(slug: string): Promise<Champion | undefined> {
   const champions = await getChampions();
   return champions.find((champion) => champion.slug === slug) ?? getMockChampionBySlug(slug);
+}
+
+export async function getChampionBySlugWithDebug(slug: string): Promise<Champion | undefined> {
+  const [dataset, debugSnapshot] = await Promise.all([
+    loadPublishedDataset(),
+    loadChampionPublishedDataDebugSnapshot(slug)
+  ]);
+  const liveChampions = dataset ? mapDatasetToChampions(dataset) : [];
+  const liveChampion = liveChampions.find((champion) => champion.slug === slug);
+  const mockChampion = getMockChampionBySlug(slug);
+  const finalChampion = liveChampion ?? mockChampion;
+  const fullMockFallbackUsed = !liveChampion && Boolean(mockChampion);
+
+  console.info("[MayhemGG /champions/[slug] data-loader debug]", {
+    requestedSlug: slug,
+    datasetLoaded: Boolean(dataset),
+    datasetSummary: dataset
+      ? {
+          patch: dataset.patch.version,
+          champions: dataset.champions.length,
+          arenaStats: dataset.arenaStats.length,
+          aramMayhemStats: dataset.aramMayhemStats.length,
+          builds: dataset.builds.length,
+          augments: dataset.augments.length
+        }
+      : null,
+    supabaseDebug: {
+      configAvailable: debugSnapshot.supabaseConfigAvailable,
+      error: debugSnapshot.error,
+      patch: debugSnapshot.patch
+        ? {
+            id: debugSnapshot.patch.id,
+            version: debugSnapshot.patch.version,
+            status: debugSnapshot.patch.status
+          }
+        : null,
+      champion: debugSnapshot.champion
+        ? {
+            id: debugSnapshot.champion.id,
+            slug: debugSnapshot.champion.slug,
+            name: debugSnapshot.champion.name,
+            riotChampionId: debugSnapshot.champion.riotChampionId,
+            riotKey: debugSnapshot.champion.riotKey
+          }
+        : null,
+      rawArenaStatisticRow: debugSnapshot.rawArenaStatisticRow,
+      mappedArenaStatisticRow: debugSnapshot.mappedArenaStatisticRow
+    },
+    selectedSources: {
+      liveChampionFound: Boolean(liveChampion),
+      fullMockFallbackUsed,
+      mockChampionAvailable: Boolean(mockChampion),
+      arenaStatsSource: liveChampion && debugSnapshot.mappedArenaStatisticRow ? "supabase" : "mock-or-missing",
+      finalUiModelSource: fullMockFallbackUsed ? "mock" : "repository"
+    },
+    finalUiModel: finalChampion ?? null
+  });
+
+  return finalChampion;
 }
 
 export async function getTopChampions(mode: Mode, limit = 4): Promise<Champion[]> {

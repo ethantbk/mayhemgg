@@ -184,7 +184,7 @@ function findBuildForStat({
 }
 
 function withBrokenScore(build: Build, brokenScore?: number | null): Build {
-  if (brokenScore == null || build.brokenScore != null) {
+  if (brokenScore == null) {
     return build;
   }
 

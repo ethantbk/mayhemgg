@@ -51,6 +51,15 @@ export type PublishedDataset = {
   championGuides: DbChampionGuide[];
 };
 
+export type ChampionPublishedDataDebugSnapshot = {
+  supabaseConfigAvailable: boolean;
+  patch: DbPatch | null;
+  champion: DbChampion | null;
+  rawArenaStatisticRow: AnyRecord | null;
+  mappedArenaStatisticRow: DbArenaChampionStatistic | null;
+  error: string | null;
+};
+
 async function loadRows<T>(query: PromiseLike<{ data: T[] | null; error: unknown }>, context: string) {
   const result = await safeSupabaseQuery(query, context);
   return result.error ? null : result.data;
@@ -292,6 +301,77 @@ async function loadActivePatch() {
 
   const latestPatch = await loadRows(db.from("patches").select("*").limit(1), "Load latest patch");
   return latestPatch?.[0] ? mapPatch(latestPatch[0] as AnyRecord) : null;
+}
+
+export async function loadChampionPublishedDataDebugSnapshot(slug: string): Promise<ChampionPublishedDataDebugSnapshot> {
+  if (!isSupabasePublicConfigAvailable()) {
+    return {
+      supabaseConfigAvailable: false,
+      patch: null,
+      champion: null,
+      rawArenaStatisticRow: null,
+      mappedArenaStatisticRow: null,
+      error: "Supabase public config is unavailable."
+    };
+  }
+
+  try {
+    const db = createServerSupabaseClient();
+    const patch = await loadActivePatch();
+
+    if (!patch) {
+      return {
+        supabaseConfigAvailable: true,
+        patch: null,
+        champion: null,
+        rawArenaStatisticRow: null,
+        mappedArenaStatisticRow: null,
+        error: "No active or latest patch row was returned."
+      };
+    }
+
+    const championRows = await loadRows(rawTable(db, "champions").select("*").eq("slug", slug), "Debug load champion by slug");
+    const rawChampion = championRows?.[0] ?? null;
+    const champion = rawChampion ? mapChampion(rawChampion) : null;
+
+    if (!champion) {
+      return {
+        supabaseConfigAvailable: true,
+        patch,
+        champion: null,
+        rawArenaStatisticRow: null,
+        mappedArenaStatisticRow: null,
+        error: "No champion row was returned for the requested slug."
+      };
+    }
+
+    const arenaRows = await loadRows(
+      rawTable(db, "arena_champion_statistics")
+        .select("*")
+        .eq("patch_id", patch.id)
+        .eq("champion_id", champion.id),
+      "Debug load Arena champion statistic"
+    );
+    const rawArenaStatisticRow = arenaRows?.[0] ?? null;
+
+    return {
+      supabaseConfigAvailable: true,
+      patch,
+      champion,
+      rawArenaStatisticRow,
+      mappedArenaStatisticRow: rawArenaStatisticRow ? mapArenaStat(rawArenaStatisticRow) : null,
+      error: null
+    };
+  } catch (error) {
+    return {
+      supabaseConfigAvailable: true,
+      patch: null,
+      champion: null,
+      rawArenaStatisticRow: null,
+      mappedArenaStatisticRow: null,
+      error: error instanceof Error ? error.message : "Unknown champion published data debug error."
+    };
+  }
 }
 
 export const loadPublishedDataset = cache(async (): Promise<PublishedDataset | null> => {
