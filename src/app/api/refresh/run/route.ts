@@ -44,7 +44,8 @@ function createRunDebug(body: Partial<RefreshRunRequestBody>, result: RefreshRun
     environment: {
       riotRefreshPuuidCount: riotRefreshPuuids.length,
       riotRefreshPuuids,
-      riotRefreshMatchCount: process.env.RIOT_REFRESH_MATCH_COUNT ?? "20",
+      riotRefreshMatchCount: process.env.RIOT_REFRESH_MATCH_COUNT ?? "50",
+      riotRefreshMatchPages: process.env.RIOT_REFRESH_MATCH_PAGES ?? "3",
       riotRefreshLookbackHours: process.env.RIOT_REFRESH_LOOKBACK_HOURS ?? "24",
       defaultRegionalRouting: process.env.RIOT_DEFAULT_REGIONAL_ROUTING ?? "americas",
       arenaQueueId: queueConfig.arenaQueueId,

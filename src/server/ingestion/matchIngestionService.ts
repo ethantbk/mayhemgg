@@ -77,11 +77,17 @@ export class MatchIngestionService {
 
   async fetchMatchIdsWithLocalQueueFilter(job: MatchDiscoveryJob): Promise<MatchDiscoveryJobResult> {
     const regionalRouting = job.regionalRouting ?? getRiotConfig().defaultRegionalRouting;
+    const targetQueueIds = [...new Set([...(job.queueIds ?? []), job.queueId].filter((queueId) => Number.isFinite(queueId) && queueId > 0))];
+
+    if (!targetQueueIds.length) {
+      throw new Error("Match discovery requires at least one target queue ID.");
+    }
 
     this.logger.info("Starting unfiltered Match-V5 discovery with local queue filtering.", {
       jobId: job.jobId,
       puuid: job.puuid,
       targetQueueId: job.queueId,
+      targetQueueIds: targetQueueIds.join(","),
       regionalRouting,
       startTime: job.startTime,
       endTime: job.endTime,
@@ -100,11 +106,13 @@ export class MatchIngestionService {
     const unfilteredMatchIdsReturned = unfilteredMatchIds.length;
     const matchIds: string[] = [];
     const queueIdsFound: number[] = [];
+    const eligibleQueueIds: number[] = [];
     const skippedMatches: MatchDiscoveryJobResult["skippedMatches"] = [];
 
     this.logger.info("Fetched recent Match-V5 IDs without Riot queue filter.", {
       jobId: job.jobId,
       targetQueueId: job.queueId,
+      targetQueueIds: targetQueueIds.join(","),
       regionalRouting,
       unfilteredMatchIdsReturned,
       unfilteredMatchIds: unfilteredMatchIds.join(",")
@@ -116,14 +124,15 @@ export class MatchIngestionService {
 
       queueIdsFound.push(foundQueueId);
 
-      if (foundQueueId === job.queueId) {
+      if (targetQueueIds.includes(foundQueueId)) {
         matchIds.push(riotMatchId);
+        eligibleQueueIds.push(foundQueueId);
       } else {
         skippedMatches.push({
           riotMatchId,
           queueId: foundQueueId,
           gameMode: match.info.gameMode,
-          reason: `Match queueId ${foundQueueId} did not match requested queueId ${job.queueId}.`
+          reason: `Match queueId ${foundQueueId} did not match requested queue IDs ${targetQueueIds.join(",")}.`
         });
       }
     }
@@ -131,9 +140,11 @@ export class MatchIngestionService {
     this.logger.info("Completed local queue filtering for Match-V5 discovery.", {
       jobId: job.jobId,
       targetQueueId: job.queueId,
+      targetQueueIds: targetQueueIds.join(","),
       regionalRouting,
       unfilteredMatchIdsReturned,
       localQueueIdsFound: queueIdsFound.join(","),
+      eligibleQueueIdsAfterLocalFilter: eligibleQueueIds.join(","),
       eligibleMatchIdsAfterLocalFilter: matchIds.join(","),
       eligibleMatchCountAfterLocalFilter: matchIds.length,
       skippedMatchCount: skippedMatches.length
@@ -143,6 +154,7 @@ export class MatchIngestionService {
       jobId: job.jobId,
       puuid: job.puuid,
       queueId: job.queueId,
+      targetQueueIds,
       regionalRouting,
       startTime: job.startTime,
       endTime: job.endTime,
@@ -151,6 +163,7 @@ export class MatchIngestionService {
       discoveryStrategy: "unfiltered-matchlist-local-queue-filter",
       unfilteredMatchIds,
       queueIdsFound,
+      eligibleQueueIds,
       skippedMatches,
       matchIds
     };

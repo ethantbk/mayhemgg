@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getRiotConfig, type RiotConfig } from "@/server/riot/config";
+import { createLogger } from "@/server/logging/logger";
 import { RiotApiError, RiotRateLimitError } from "@/server/riot/errors";
 import {
   getRetryDelayMs,
@@ -21,6 +22,8 @@ type RiotRequestOptions = {
   query?: Record<string, string | number | boolean | undefined>;
   authenticated?: boolean;
 };
+
+const logger = createLogger({ component: "riot-client" });
 
 function sleep(ms: number) {
   return new Promise((resolve) => {
@@ -86,8 +89,25 @@ export class RiotClient {
         const rateLimit = getRiotRateLimitSnapshot(response.headers);
         const retryAfterMs = recordRiotRateLimit(routeKey, response.headers, this.config.rateLimitBufferMs);
 
+        logger.info("Received Riot API response.", {
+          routeKey,
+          statusCode: response.status,
+          attempt,
+          retryAfterSeconds: rateLimit.retryAfterSeconds,
+          appRateLimit: rateLimit.appLimit,
+          appRateLimitCount: rateLimit.appCount,
+          methodRateLimit: rateLimit.methodLimit,
+          methodRateLimitCount: rateLimit.methodCount
+        });
+
         if (response.status === 429) {
           if (attempt < this.config.maxRetries) {
+            logger.warn("Riot API rate limited request; retrying after backoff.", {
+              routeKey,
+              statusCode: response.status,
+              attempt,
+              retryAfterMs: retryAfterMs ?? null
+            });
             await sleep(getRetryDelayMs(attempt, retryAfterMs));
             continue;
           }
@@ -99,6 +119,12 @@ export class RiotClient {
         }
 
         if (response.status >= 500 && attempt < this.config.maxRetries) {
+          logger.warn("Riot API server error; retrying request.", {
+            routeKey,
+            statusCode: response.status,
+            attempt,
+            retryAfterMs: retryAfterMs ?? null
+          });
           await sleep(getRetryDelayMs(attempt, retryAfterMs));
           continue;
         }
@@ -106,6 +132,12 @@ export class RiotClient {
         if (!response.ok) {
           const errorBody = await readRiotError(response);
           const message = errorBody?.status?.message ?? `Riot API request failed with status ${response.status}.`;
+
+          logger.error("Riot API request failed with non-success status.", {
+            routeKey,
+            statusCode: response.status,
+            message
+          });
 
           throw new RiotApiError(message, {
             statusCode: response.status,

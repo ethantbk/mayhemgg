@@ -59,6 +59,19 @@ function uniqueValues(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function countNumbers(values: number[]) {
+  const counts = new Map<number, number>();
+
+  values.forEach((value) => {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  });
+
+  return [...counts.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([value, count]) => `${value}:${count}`)
+    .join(",");
+}
+
 function uniqueDiscoveryPuuids(sources: AggregationPipelineMatchDiscoverySource[] = []) {
   return uniqueValues(sources.map((source) => source.puuid));
 }
@@ -367,10 +380,20 @@ export class AggregationPipelineRunner {
       const limitedMatchIds = typeof input.matchIngestion?.maxMatches === "number"
         ? requestedMatchIds.slice(0, input.matchIngestion.maxMatches)
         : requestedMatchIds;
+      const duplicateMatchIds = await this.matchPersistenceRepository.findExistingRiotMatchIds(limitedMatchIds);
+      const duplicateMatchIdSet = new Set(duplicateMatchIds);
+      const matchIdsToPersist = limitedMatchIds.filter((riotMatchId) => !duplicateMatchIdSet.has(riotMatchId));
       const persistedMatches = [];
       const failedMatches: MatchIngestionPipelineResult["failedMatches"] = [];
       const skippedMatches: MatchIngestionPipelineResult["debug"]["skippedMatches"] = [];
       let participantsPersisted = 0;
+
+      duplicateMatchIds.forEach((riotMatchId) => {
+        skippedMatches.push({
+          riotMatchId,
+          reason: "Match already exists in riot_matches and was skipped before detail fetch/persistence."
+        });
+      });
 
       if (!limitedMatchIds.length) {
         const reason = discoverySources.length
@@ -385,12 +408,24 @@ export class AggregationPipelineRunner {
           discoverySourceCount: discoverySources.length,
           unfilteredMatchIdsReturned: discoveryResults.reduce((sum, entry) => sum + entry.unfilteredMatchIds.length, 0),
           localQueueIdsFound: uniqueValues(discoveryResults.flatMap((entry) => entry.queueIdsFound.map(String))).join(","),
+          eligibleQueueIdsAfterLocalFilter: countNumbers(discoveryResults.flatMap((entry) => entry.eligibleQueueIds)),
           eligibleMatchIdsAfterLocalFilter: discoveredMatchIds.join(","),
           reason
         });
       }
 
-      for (const riotMatchId of limitedMatchIds) {
+      this.logger.info("Match ingestion dedupe completed.", {
+        parentJobId,
+        patchId,
+        matchesDiscoveredBeforeQueueFiltering: discoveryResults.reduce((sum, entry) => sum + entry.unfilteredMatchIds.length, 0),
+        matchesAfterLocalQueueFiltering: requestedMatchIds.length,
+        eligibleQueueIdsAfterLocalFilter: countNumbers(discoveryResults.flatMap((entry) => entry.eligibleQueueIds)),
+        maxMatchesApplied: input.matchIngestion?.maxMatches ?? null,
+        duplicateMatchesSkipped: duplicateMatchIds.length,
+        matchesQueuedForPersistence: matchIdsToPersist.length
+      });
+
+      for (const riotMatchId of matchIdsToPersist) {
         try {
           const persisted = await this.runFetchAndPersistJob({
             parentJobId,
@@ -427,6 +462,7 @@ export class AggregationPipelineRunner {
           discoveryQueries: discoveryResults.map((entry) => ({
             puuid: entry.puuid,
             queueId: entry.queueId,
+            targetQueueIds: entry.targetQueueIds,
             regionalRouting: entry.regionalRouting,
             startTime: entry.startTime,
             endTime: entry.endTime,
@@ -435,6 +471,7 @@ export class AggregationPipelineRunner {
             discoveryStrategy: entry.discoveryStrategy,
             unfilteredMatchIds: entry.unfilteredMatchIds,
             queueIdsFound: entry.queueIdsFound,
+            eligibleQueueIds: entry.eligibleQueueIds,
             matchIdsReturned: entry.matchIds,
             matchCount: entry.matchIds.length,
             skippedMatches: entry.skippedMatches
@@ -445,11 +482,12 @@ export class AggregationPipelineRunner {
             mode: entry.mode,
             participantsPersisted: entry.participantsPersisted
           })),
-          skippedMatches
+          skippedMatches,
+          duplicateMatchesSkipped: duplicateMatchIds
         },
         matchIdsDiscovered: discoveredMatchIds.length,
         matchIdsRequested: requestedMatchIds.length,
-        matchesAttempted: limitedMatchIds.length,
+        matchesAttempted: matchIdsToPersist.length,
         matchesPersisted: persistedMatches.length,
         participantsPersisted,
         failedMatches,
@@ -467,6 +505,7 @@ export class AggregationPipelineRunner {
           matchesAttempted: result.matchesAttempted,
           matchesPersisted: result.matchesPersisted,
           participantsPersisted: result.participantsPersisted,
+          duplicateMatchesSkipped: duplicateMatchIds.length,
           failedMatches: result.failedMatches.length,
           debug: result.debug
         })
@@ -477,7 +516,9 @@ export class AggregationPipelineRunner {
         patchId,
         unfilteredMatchIdsReturned: discoveryResults.reduce((sum, entry) => sum + entry.unfilteredMatchIds.length, 0),
         localQueueIdsFound: uniqueValues(discoveryResults.flatMap((entry) => entry.queueIdsFound.map(String))).join(","),
+        eligibleQueueIdsAfterLocalFilter: countNumbers(discoveryResults.flatMap((entry) => entry.eligibleQueueIds)),
         eligibleMatchIdsAfterLocalFilter: requestedMatchIds.join(","),
+        duplicatesSkipped: duplicateMatchIds.length,
         matchesPersisted: result.matchesPersisted,
         participantsPersisted: result.participantsPersisted
       });
@@ -510,6 +551,7 @@ export class AggregationPipelineRunner {
       jobId: childJobId(parentJobId, "match-discovery", index),
       puuid: source.puuid,
       queueId: source.queueId,
+      queueIds: source.queueIds,
       regionalRouting: source.regionalRouting,
       startTime: source.startTime,
       endTime: source.endTime,
@@ -532,9 +574,11 @@ export class AggregationPipelineRunner {
         jobId: job.jobId,
         puuid: job.puuid,
         targetQueueId: job.queueId,
+        targetQueueIds: result.targetQueueIds.join(","),
         regionalRouting: result.regionalRouting,
         unfilteredMatchIdsReturned: result.unfilteredMatchIds.length,
         localQueueIdsFound: result.queueIdsFound.join(","),
+        eligibleQueueIdsAfterLocalFilter: countNumbers(result.eligibleQueueIds),
         eligibleMatchIdsAfterLocalFilter: result.matchIds.join(","),
         eligibleMatchCountAfterLocalFilter: result.matchIds.length
       });
@@ -545,6 +589,7 @@ export class AggregationPipelineRunner {
           parentJobId,
           puuid: result.puuid,
           queueId: result.queueId,
+          targetQueueIds: result.targetQueueIds,
           regionalRouting: result.regionalRouting,
           discoveryStrategy: result.discoveryStrategy,
           startTime: result.startTime,
@@ -553,6 +598,7 @@ export class AggregationPipelineRunner {
           count: result.count,
           unfilteredMatchIds: result.unfilteredMatchIds,
           queueIdsFound: result.queueIdsFound,
+          eligibleQueueIds: result.eligibleQueueIds,
           skippedMatches: result.skippedMatches,
           matchesDiscovered: result.matchIds.length,
           matchIds: result.matchIds

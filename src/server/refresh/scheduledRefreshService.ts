@@ -50,13 +50,18 @@ function parseSeedPuuids() {
     .filter(Boolean);
 }
 
+function uniqueNumbers(values: number[]) {
+  return [...new Set(values.filter((value) => Number.isFinite(value) && value > 0))];
+}
+
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
 function dailyMatchIngestionOptions(modes: AggregationPipelineMode[]): AggregationPipelineMatchIngestionOptions {
   const puuids = parseSeedPuuids();
-  const count = parsePositiveInteger("RIOT_REFRESH_MATCH_COUNT", process.env.RIOT_REFRESH_MATCH_COUNT, 20);
+  const count = Math.min(parsePositiveInteger("RIOT_REFRESH_MATCH_COUNT", process.env.RIOT_REFRESH_MATCH_COUNT, 50), 100);
+  const pageCount = parsePositiveInteger("RIOT_REFRESH_MATCH_PAGES", process.env.RIOT_REFRESH_MATCH_PAGES, 3);
   const lookbackHours = parsePositiveInteger("RIOT_REFRESH_LOOKBACK_HOURS", process.env.RIOT_REFRESH_LOOKBACK_HOURS, 24);
   const endTime = Math.floor(Date.now() / 1000);
   const startTime = endTime - lookbackHours * 60 * 60;
@@ -65,16 +70,23 @@ function dailyMatchIngestionOptions(modes: AggregationPipelineMode[]): Aggregati
     arena: queueIds.arenaQueueIds,
     aram_mayhem: queueIds.aramMayhemQueueIds
   };
+  const targetQueueIds = uniqueNumbers(modes.flatMap((mode) => modeQueueIds[mode]));
+
+  if (!targetQueueIds.length) {
+    throw new Error("Daily refresh requires at least one target Riot queue ID.");
+  }
 
   return {
     discoverySources: puuids.flatMap((puuid) =>
-      modes.flatMap((mode) => modeQueueIds[mode].map((queueId) => ({
+      Array.from({ length: pageCount }, (_, pageIndex) => ({
         puuid,
-        queueId,
+        queueId: targetQueueIds[0],
+        queueIds: targetQueueIds,
         startTime,
         endTime,
+        start: pageIndex * count,
         count
-      })))
+      }))
     ),
     continueOnMatchError: true
   };
@@ -100,7 +112,10 @@ export class ScheduledRefreshService {
     this.logger.info("Loaded RIOT_REFRESH_PUUIDS for daily refresh.", {
       seedPuuidCount: seedPuuids.length,
       seedPuuids: seedPuuids.join(","),
-      modes: resolvedModes.join(",")
+      modes: resolvedModes.join(","),
+      matchCountPerPage: Math.min(parsePositiveInteger("RIOT_REFRESH_MATCH_COUNT", process.env.RIOT_REFRESH_MATCH_COUNT, 50), 100),
+      matchPageCount: parsePositiveInteger("RIOT_REFRESH_MATCH_PAGES", process.env.RIOT_REFRESH_MATCH_PAGES, 3),
+      lookbackHours: parsePositiveInteger("RIOT_REFRESH_LOOKBACK_HOURS", process.env.RIOT_REFRESH_LOOKBACK_HOURS, 24)
     });
 
     return this.runPipeline("daily", patch, {

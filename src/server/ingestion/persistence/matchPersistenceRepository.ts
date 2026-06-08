@@ -73,6 +73,34 @@ export class MatchPersistenceRepository {
     this.logger = logger;
   }
 
+  async findExistingRiotMatchIds(riotMatchIds: string[]): Promise<string[]> {
+    const uniqueRiotMatchIds = [...new Set(riotMatchIds.filter(Boolean))];
+
+    if (!uniqueRiotMatchIds.length) {
+      return [];
+    }
+
+    try {
+      const db = createServiceRoleSupabaseClient();
+      const response = await db
+        .from("riot_matches")
+        .select("riot_match_id")
+        .in("riot_match_id", uniqueRiotMatchIds);
+      const rows = unwrapSupabaseResponse(response, "Load existing Riot match IDs");
+
+      return rows.map((row) => row.riot_match_id).filter(Boolean);
+    } catch (error) {
+      const databaseError = toDatabaseError(error, "Load existing Riot match IDs");
+
+      this.logger.error("Failed to load existing Riot match IDs.", {
+        error: databaseError.message,
+        requestedMatchCount: uniqueRiotMatchIds.length
+      });
+
+      throw databaseError;
+    }
+  }
+
   async persistNormalizedMatch(input: PersistNormalizedMatchInput): Promise<PersistNormalizedMatchResult> {
     const matchPayload = toMatchPayload(input.match, input.patchId);
     const participantPayloads = toJsonValue(input.match.participants.map(toParticipantPayload));

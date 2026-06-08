@@ -12,6 +12,7 @@ export type AggregationPipelineMode = Extract<DbGameMode, "arena" | "aram_mayhem
 export type AggregationPipelineMatchDiscoverySource = {
   puuid: string;
   queueId: number;
+  queueIds?: number[];
   regionalRouting?: RiotRegionalRouting;
   startTime?: number;
   endTime?: number;
@@ -46,6 +47,7 @@ export type MatchIngestionPipelineResult = {
     discoveryQueries: Array<{
       puuid: string;
       queueId: number;
+      targetQueueIds?: number[];
       regionalRouting?: RiotRegionalRouting;
       startTime?: number;
       endTime?: number;
@@ -54,6 +56,7 @@ export type MatchIngestionPipelineResult = {
       discoveryStrategy: string;
       unfilteredMatchIds: string[];
       queueIdsFound: number[];
+      eligibleQueueIds: number[];
       matchIdsReturned: string[];
       matchCount: number;
       skippedMatches: Array<{
@@ -74,6 +77,7 @@ export type MatchIngestionPipelineResult = {
       reason: string;
       error?: string;
     }>;
+    duplicateMatchesSkipped: string[];
   };
   matchIdsDiscovered: number;
   matchIdsRequested: number;

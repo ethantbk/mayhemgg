@@ -6,6 +6,7 @@ export type MatchDiscoveryJob = {
   jobId: string;
   puuid: string;
   queueId: number;
+  queueIds?: number[];
   regionalRouting?: RiotRegionalRouting;
   startTime?: number;
   endTime?: number;
@@ -26,6 +27,7 @@ export type MatchDiscoveryJobResult = {
   jobId: string;
   puuid: string;
   queueId: number;
+  targetQueueIds: number[];
   regionalRouting: RiotRegionalRouting;
   startTime?: number;
   endTime?: number;
@@ -34,6 +36,7 @@ export type MatchDiscoveryJobResult = {
   discoveryStrategy: "unfiltered-matchlist-local-queue-filter";
   unfilteredMatchIds: string[];
   queueIdsFound: number[];
+  eligibleQueueIds: number[];
   skippedMatches: Array<{
     riotMatchId: string;
     queueId: number;
