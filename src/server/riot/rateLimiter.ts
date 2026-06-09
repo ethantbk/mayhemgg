@@ -10,7 +10,7 @@ function sleep(ms: number) {
   });
 }
 
-function parseRetryAfterMs(value: string | null, bufferMs: number) {
+export function parseRetryAfterMs(value: string | null, bufferMs: number) {
   if (!value) return null;
 
   const retryAfterSeconds = Number.parseFloat(value);
@@ -42,6 +42,10 @@ export async function waitForRiotRoute(routeKey: string) {
   if (waitMs > 0) {
     await sleep(waitMs);
   }
+}
+
+export function getRiotRouteCooldownMs(routeKey: string) {
+  return Math.max((routeCooldowns.get(routeKey) ?? 0) - Date.now(), 0);
 }
 
 export function recordRiotRateLimit(routeKey: string, headers: Headers, bufferMs: number) {

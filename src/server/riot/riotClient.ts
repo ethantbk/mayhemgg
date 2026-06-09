@@ -4,6 +4,7 @@ import { getRiotConfig, type RiotConfig } from "@/server/riot/config";
 import { createLogger } from "@/server/logging/logger";
 import { RiotApiError, RiotRateLimitError } from "@/server/riot/errors";
 import {
+  getRiotRouteCooldownMs,
   getRetryDelayMs,
   getRiotRateLimitSnapshot,
   recordRiotRateLimit,
@@ -72,6 +73,20 @@ export class RiotClient {
     const routeKey = options.routeKey;
 
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt += 1) {
+      const routeCooldownMs = getRiotRouteCooldownMs(routeKey);
+
+      if (routeCooldownMs > this.config.maxInRequestRetryAfterMs) {
+        logger.warn("Riot API route cooldown exceeds safe in-request retry window.", {
+          routeKey,
+          retryAfterMs: routeCooldownMs,
+          maxInRequestRetryAfterMs: this.config.maxInRequestRetryAfterMs
+        });
+
+        throw new RiotRateLimitError("Riot API rate limit reached.", routeCooldownMs, {
+          routeKey
+        });
+      }
+
       await waitForRiotRoute(routeKey);
 
       const controller = new AbortController();
@@ -101,6 +116,21 @@ export class RiotClient {
         });
 
         if (response.status === 429) {
+          if ((retryAfterMs ?? 0) > this.config.maxInRequestRetryAfterMs) {
+            logger.warn("Riot API retry-after exceeds safe in-request retry window.", {
+              routeKey,
+              statusCode: response.status,
+              attempt,
+              retryAfterMs: retryAfterMs ?? null,
+              maxInRequestRetryAfterMs: this.config.maxInRequestRetryAfterMs
+            });
+
+            throw new RiotRateLimitError("Riot API rate limit reached.", retryAfterMs ?? 0, {
+              routeKey,
+              rateLimit
+            });
+          }
+
           if (attempt < this.config.maxRetries) {
             logger.warn("Riot API rate limited request; retrying after backoff.", {
               routeKey,

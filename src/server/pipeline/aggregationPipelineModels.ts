@@ -89,14 +89,21 @@ export type MatchIngestionPipelineResult = {
     }>;
     diagnostics: {
       seedCount: number;
+      currentSeed: string | null;
       matchesDiscovered: number;
+      matchDetailsFetched: number;
       eligibleMatchesFound: number;
       arenaMatchesFound: number;
       duplicateMatchesSkipped: number;
       matchesInserted: number;
       participantsInserted: number;
+      stoppedDueToRateLimit: boolean;
+      retryAfterMs: number | null;
     };
   };
+  partial: boolean;
+  partialReason?: string;
+  retryAfterMs?: number | null;
   matchIdsDiscovered: number;
   matchIdsRequested: number;
   matchesAttempted: number;
@@ -125,4 +132,7 @@ export type AggregationPipelineResult = {
   matchIngestion: MatchIngestionPipelineResult;
   phases: AggregationPipelinePhaseSummary;
   recordsProcessed: number;
+  partial: boolean;
+  partialReason?: string;
+  retryAfterMs?: number | null;
 };

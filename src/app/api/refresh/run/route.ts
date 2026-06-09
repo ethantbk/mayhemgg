@@ -5,6 +5,7 @@ import { readJsonBody } from "@/app/api/refresh/requestUtils";
 import { toDatabaseError } from "@/lib/supabase/errors";
 import { createLogger } from "@/server/logging/logger";
 import { getDefaultMatchNormalizationOptions } from "@/server/ingestion";
+import { RiotRateLimitError } from "@/server/riot";
 import type { RefreshRunResult } from "@/server/refresh";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,10 @@ function createRunDebug(body: Partial<RefreshRunRequestBody>, result: RefreshRun
       riotRefreshRiotIds,
       riotRefreshMatchCount: process.env.RIOT_REFRESH_MATCH_COUNT ?? "50",
       riotRefreshMatchPages: process.env.RIOT_REFRESH_MATCH_PAGES ?? "3",
+      riotRefreshMaxSeeds: process.env.RIOT_REFRESH_MAX_SEEDS ?? "5",
+      riotRefreshMaxMatchCountPerPage: process.env.RIOT_REFRESH_MAX_MATCH_COUNT_PER_PAGE ?? "50",
+      riotRefreshMaxMatchPages: process.env.RIOT_REFRESH_MAX_MATCH_PAGES ?? "3",
+      riotApiMaxInRequestRetryAfterMs: process.env.RIOT_API_MAX_IN_REQUEST_RETRY_AFTER_MS ?? "5000",
       riotRefreshLookbackHours: process.env.RIOT_REFRESH_LOOKBACK_HOURS ?? "24",
       defaultRegionalRouting: process.env.RIOT_DEFAULT_REGIONAL_ROUTING ?? "americas",
       arenaQueueId: queueConfig.arenaQueueId,
@@ -93,13 +98,49 @@ export async function POST(request: NextRequest) {
       : body.kind === "champion" || body.championId
         ? await service.runChampionRefresh(body as ChampionRefreshRunInput)
         : await service.runManualRefresh(body);
+    const debug = createRunDebug(body, result);
 
     return Response.json({
       ok: true,
-      debug: createRunDebug(body, result),
+      success: true,
+      partial: result.result.partial,
+      reason: result.result.partialReason ?? null,
+      retryAfterMs: result.result.retryAfterMs ?? null,
+      diagnostics: debug.diagnostics,
+      debug,
       ...result
     });
   } catch (error) {
+    if (error instanceof RiotRateLimitError) {
+      const diagnostics = {
+        seedCount: readRefreshPuuids().length + readRefreshRiotIds().length,
+        currentSeed: null,
+        matchesDiscovered: 0,
+        matchDetailsFetched: 0,
+        eligibleMatchesFound: 0,
+        arenaMatchesFound: 0,
+        duplicateMatchesSkipped: 0,
+        matchesInserted: 0,
+        participantsInserted: 0,
+        stoppedDueToRateLimit: true,
+        retryAfterMs: error.retryAfterMs
+      };
+
+      logger.warn("Refresh run stopped before pipeline start due to Riot API rate limit.", {
+        routeKey: error.routeKey,
+        retryAfterMs: error.retryAfterMs
+      });
+
+      return Response.json({
+        ok: true,
+        success: true,
+        partial: true,
+        reason: "Riot API rate limit reached",
+        retryAfterMs: error.retryAfterMs,
+        diagnostics
+      });
+    }
+
     const databaseError = toDatabaseError(error, "Refresh run failed");
 
     logger.error("Refresh run API request failed.", {

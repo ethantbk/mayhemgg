@@ -104,6 +104,13 @@ function createPerSeedDiscoveryStats({
   });
 }
 
+function findSeedForMatchId(
+  discoveryResults: MatchIngestionPipelineResult["discoveryResults"],
+  riotMatchId: string
+) {
+  return discoveryResults.find((entry) => entry.matchIds.includes(riotMatchId))?.puuid ?? null;
+}
+
 function pipelineJobId(patchId: string) {
   return `aggregation-pipeline:${patchId}`;
 }
@@ -138,6 +145,9 @@ function resultMetadata(result: AggregationPipelineResult): JsonValue {
     patchId: result.patchId,
     modes: result.modes,
     matchIngestion: {
+      partial: result.matchIngestion.partial,
+      partialReason: result.matchIngestion.partialReason ?? null,
+      retryAfterMs: result.matchIngestion.retryAfterMs ?? null,
       matchIdsDiscovered: result.matchIngestion.matchIdsDiscovered,
       matchIdsRequested: result.matchIngestion.matchIdsRequested,
       matchesAttempted: result.matchIngestion.matchesAttempted,
@@ -146,6 +156,9 @@ function resultMetadata(result: AggregationPipelineResult): JsonValue {
       failedMatches: result.matchIngestion.failedMatches.length,
       debug: result.matchIngestion.debug
     },
+    partial: result.partial,
+    partialReason: result.partialReason ?? null,
+    retryAfterMs: result.retryAfterMs ?? null,
     championId: result.championId ?? null,
     championAggregation: result.phases.championAggregation.map((entry) => ({
       mode: entry.mode,
@@ -310,7 +323,10 @@ export class AggregationPipelineRunner {
           augmentAggregation,
           brokenScoreGeneration
         },
-        recordsProcessed
+        recordsProcessed,
+        partial: matchIngestion.partial,
+        partialReason: matchIngestion.partialReason,
+        retryAfterMs: matchIngestion.retryAfterMs
       } satisfies AggregationPipelineResult;
 
       await this.ingestionRunsRepository.completeRun({
@@ -324,7 +340,10 @@ export class AggregationPipelineRunner {
         jobId: job.jobId,
         runId: run.id,
         patchId: input.patchId,
-        recordsProcessed
+        recordsProcessed,
+        partial: result.partial,
+        partialReason: result.partialReason ?? null,
+        retryAfterMs: result.retryAfterMs ?? null
       });
 
       return result;
@@ -379,6 +398,9 @@ export class AggregationPipelineRunner {
       const seedPuuids = uniqueDiscoveryPuuids(discoverySources);
       const discoveryResults = [];
       const discoveredMatchIds: string[] = [];
+      let stoppedDueToRateLimit = false;
+      let retryAfterMs: number | null = null;
+      let currentSeed: string | null = null;
 
       this.logger.info("Prepared match ingestion discovery sources.", {
         parentJobId,
@@ -390,12 +412,32 @@ export class AggregationPipelineRunner {
       });
 
       for (const [index, source] of discoverySources.entries()) {
-        const result = await this.runDiscoveryJob({
-          parentJobId,
-          patchId,
-          source,
-          index
-        });
+        currentSeed = source.puuid;
+
+        let result;
+
+        try {
+          result = await this.runDiscoveryJob({
+            parentJobId,
+            patchId,
+            source,
+            index
+          });
+        } catch (error) {
+          if (error instanceof RiotRateLimitError) {
+            stoppedDueToRateLimit = true;
+            retryAfterMs = error.retryAfterMs;
+            this.logger.warn("Stopping match discovery early due to Riot API rate limit.", {
+              parentJobId,
+              patchId,
+              currentSeed,
+              retryAfterMs
+            });
+            break;
+          }
+
+          throw error;
+        }
 
         discoveryResults.push(result);
         discoveredMatchIds.push(...result.matchIds);
@@ -483,6 +525,34 @@ export class AggregationPipelineRunner {
           persistedMatches.push(persisted);
           participantsPersisted += persisted.participantsPersisted;
         } catch (error) {
+          if (error instanceof RiotRateLimitError) {
+            stoppedDueToRateLimit = true;
+            retryAfterMs = error.retryAfterMs;
+            currentSeed = findSeedForMatchId(discoveryResults, riotMatchId) ?? currentSeed;
+
+            failedMatches.push({
+              riotMatchId,
+              error: errorMessage(error)
+            });
+            skippedMatches.push({
+              riotMatchId,
+              reason: "Riot API rate limit reached. Refresh stopped before fetching additional match details.",
+              error: errorMessage(error)
+            });
+
+            this.logger.warn("Stopping match persistence early due to Riot API rate limit.", {
+              parentJobId,
+              patchId,
+              currentSeed,
+              riotMatchId,
+              retryAfterMs,
+              matchesPersisted: persistedMatches.length,
+              participantsPersisted
+            });
+
+            break;
+          }
+
           failedMatches.push({
             riotMatchId,
             error: errorMessage(error)
@@ -532,14 +602,21 @@ export class AggregationPipelineRunner {
           perSeedDiscoveryStats,
           diagnostics: {
             seedCount: seedPuuids.length,
+            currentSeed,
             matchesDiscovered: discoveryResults.reduce((sum, entry) => sum + entry.unfilteredMatchIds.length, 0),
+            matchDetailsFetched: discoveryResults.reduce((sum, entry) => sum + entry.queueIdsFound.length, 0) + persistedMatches.length,
             eligibleMatchesFound: requestedMatchIds.length,
             arenaMatchesFound: discoveryResults.reduce((sum, entry) => sum + entry.eligibleQueueIds.filter((queueId) => queueId === ARENA_QUEUE_ID).length, 0),
             duplicateMatchesSkipped: duplicateMatchIds.length,
             matchesInserted: persistedMatches.length,
-            participantsInserted: participantsPersisted
+            participantsInserted: participantsPersisted,
+            stoppedDueToRateLimit,
+            retryAfterMs
           }
         },
+        partial: stoppedDueToRateLimit,
+        partialReason: stoppedDueToRateLimit ? "Riot API rate limit reached" : undefined,
+        retryAfterMs,
         matchIdsDiscovered: discoveredMatchIds.length,
         matchIdsRequested: requestedMatchIds.length,
         matchesAttempted: matchIdsToPersist.length,
@@ -560,6 +637,9 @@ export class AggregationPipelineRunner {
           matchesAttempted: result.matchesAttempted,
           matchesPersisted: result.matchesPersisted,
           participantsPersisted: result.participantsPersisted,
+          partial: result.partial,
+          partialReason: result.partialReason ?? null,
+          retryAfterMs: result.retryAfterMs ?? null,
           duplicateMatchesSkipped: duplicateMatchIds.length,
           failedMatches: result.failedMatches.length,
           debug: result.debug
@@ -575,7 +655,10 @@ export class AggregationPipelineRunner {
         eligibleMatchIdsAfterLocalFilter: requestedMatchIds.join(","),
         duplicatesSkipped: duplicateMatchIds.length,
         matchesPersisted: result.matchesPersisted,
-        participantsPersisted: result.participantsPersisted
+        participantsPersisted: result.participantsPersisted,
+        partial: result.partial,
+        partialReason: result.partialReason ?? null,
+        retryAfterMs: result.retryAfterMs ?? null
       });
 
       return result;

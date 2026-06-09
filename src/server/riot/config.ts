@@ -27,6 +27,7 @@ export type RiotConfig = {
   timeoutMs: number;
   maxRetries: number;
   rateLimitBufferMs: number;
+  maxInRequestRetryAfterMs: number;
 };
 
 export class RiotConfigError extends Error {
@@ -93,6 +94,11 @@ export function getRiotConfig(): RiotConfig {
     dataDragonBaseUrl: normalizeBaseUrl(process.env.DATA_DRAGON_BASE_URL ?? "https://ddragon.leagueoflegends.com"),
     timeoutMs: parsePositiveInteger("RIOT_API_TIMEOUT_MS", process.env.RIOT_API_TIMEOUT_MS, 10000),
     maxRetries: parsePositiveInteger("RIOT_API_MAX_RETRIES", process.env.RIOT_API_MAX_RETRIES, 2),
-    rateLimitBufferMs: parsePositiveInteger("RIOT_API_RATE_LIMIT_BUFFER_MS", process.env.RIOT_API_RATE_LIMIT_BUFFER_MS, 250)
+    rateLimitBufferMs: parsePositiveInteger("RIOT_API_RATE_LIMIT_BUFFER_MS", process.env.RIOT_API_RATE_LIMIT_BUFFER_MS, 250),
+    maxInRequestRetryAfterMs: parsePositiveInteger(
+      "RIOT_API_MAX_IN_REQUEST_RETRY_AFTER_MS",
+      process.env.RIOT_API_MAX_IN_REQUEST_RETRY_AFTER_MS,
+      5000
+    )
   };
 }

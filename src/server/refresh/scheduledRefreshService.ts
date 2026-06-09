@@ -43,6 +43,13 @@ function parsePositiveInteger(name: string, value: string | undefined, fallback:
   return parsed;
 }
 
+function parseCappedPositiveInteger(name: string, value: string | undefined, fallback: number, capName: string, capFallback: number) {
+  const requestedValue = parsePositiveInteger(name, value, fallback);
+  const capValue = parsePositiveInteger(capName, process.env[capName], capFallback);
+
+  return Math.min(requestedValue, capValue);
+}
+
 function splitEnvList(value: string | undefined) {
   return (value ?? "")
     .split(/[\n,;]+/)
@@ -107,8 +114,20 @@ async function resolveRefreshSeedPuuids(logger: Logger): Promise<RefreshSeedReso
     });
   }
 
+  const puuids = uniqueStrings([...directPuuids, ...resolvedPuuids]);
+  const maxSeeds = parsePositiveInteger("RIOT_REFRESH_MAX_SEEDS", process.env.RIOT_REFRESH_MAX_SEEDS, 5);
+  const cappedPuuids = puuids.slice(0, maxSeeds);
+
+  if (puuids.length > cappedPuuids.length) {
+    logger.warn("Refresh seed list exceeded conservative max seed cap.", {
+      configuredSeedCount: puuids.length,
+      maxSeeds,
+      activeSeedCount: cappedPuuids.length
+    });
+  }
+
   return {
-    puuids: uniqueStrings([...directPuuids, ...resolvedPuuids]),
+    puuids: cappedPuuids,
     directPuuidCount: directPuuids.length,
     riotIdSeedCount: riotIds.length,
     resolvedRiotIdSeedCount: resolvedPuuids.length
@@ -116,8 +135,23 @@ async function resolveRefreshSeedPuuids(logger: Logger): Promise<RefreshSeedReso
 }
 
 function dailyMatchIngestionOptions(modes: AggregationPipelineMode[], puuids: string[]): AggregationPipelineMatchIngestionOptions {
-  const count = Math.min(parsePositiveInteger("RIOT_REFRESH_MATCH_COUNT", process.env.RIOT_REFRESH_MATCH_COUNT, 50), 100);
-  const pageCount = parsePositiveInteger("RIOT_REFRESH_MATCH_PAGES", process.env.RIOT_REFRESH_MATCH_PAGES, 3);
+  const count = Math.min(
+    parseCappedPositiveInteger(
+      "RIOT_REFRESH_MATCH_COUNT",
+      process.env.RIOT_REFRESH_MATCH_COUNT,
+      50,
+      "RIOT_REFRESH_MAX_MATCH_COUNT_PER_PAGE",
+      50
+    ),
+    100
+  );
+  const pageCount = parseCappedPositiveInteger(
+    "RIOT_REFRESH_MATCH_PAGES",
+    process.env.RIOT_REFRESH_MATCH_PAGES,
+    3,
+    "RIOT_REFRESH_MAX_MATCH_PAGES",
+    3
+  );
   const lookbackHours = parsePositiveInteger("RIOT_REFRESH_LOOKBACK_HOURS", process.env.RIOT_REFRESH_LOOKBACK_HOURS, 24);
   const endTime = Math.floor(Date.now() / 1000);
   const startTime = endTime - lookbackHours * 60 * 60;
@@ -176,8 +210,12 @@ export class ScheduledRefreshService {
       resolvedRiotIdSeedCount: seeds.resolvedRiotIdSeedCount,
       seedPuuids: seeds.puuids.join(","),
       modes: resolvedModes.join(","),
-      matchCountPerPage: Math.min(parsePositiveInteger("RIOT_REFRESH_MATCH_COUNT", process.env.RIOT_REFRESH_MATCH_COUNT, 50), 100),
-      matchPageCount: parsePositiveInteger("RIOT_REFRESH_MATCH_PAGES", process.env.RIOT_REFRESH_MATCH_PAGES, 3),
+      matchCountPerPage: Math.min(
+        parseCappedPositiveInteger("RIOT_REFRESH_MATCH_COUNT", process.env.RIOT_REFRESH_MATCH_COUNT, 50, "RIOT_REFRESH_MAX_MATCH_COUNT_PER_PAGE", 50),
+        100
+      ),
+      matchPageCount: parseCappedPositiveInteger("RIOT_REFRESH_MATCH_PAGES", process.env.RIOT_REFRESH_MATCH_PAGES, 3, "RIOT_REFRESH_MAX_MATCH_PAGES", 3),
+      maxSeeds: parsePositiveInteger("RIOT_REFRESH_MAX_SEEDS", process.env.RIOT_REFRESH_MAX_SEEDS, 5),
       lookbackHours: parsePositiveInteger("RIOT_REFRESH_LOOKBACK_HOURS", process.env.RIOT_REFRESH_LOOKBACK_HOURS, 24)
     });
 
