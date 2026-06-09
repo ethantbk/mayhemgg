@@ -10,7 +10,7 @@ import {
   type AggregationPipelineRunner,
   type RunAggregationPipelineInput
 } from "@/server/pipeline";
-import { isRiotServiceConfigured } from "@/server/riot";
+import { getRiotAccountByRiotId, isRiotServiceConfigured } from "@/server/riot";
 import { getDefaultMatchNormalizationOptions } from "@/server/ingestion";
 import {
   createRefreshStatusRepository,
@@ -43,11 +43,38 @@ function parsePositiveInteger(name: string, value: string | undefined, fallback:
   return parsed;
 }
 
-function parseSeedPuuids() {
-  return (process.env.RIOT_REFRESH_PUUIDS ?? "")
-    .split(",")
+function splitEnvList(value: string | undefined) {
+  return (value ?? "")
+    .split(/[\n,;]+/)
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function parseSeedPuuids() {
+  return uniqueStrings(splitEnvList(process.env.RIOT_REFRESH_PUUIDS));
+}
+
+function parseSeedRiotIds() {
+  return uniqueStrings(splitEnvList(process.env.RIOT_REFRESH_RIOT_IDS ?? process.env.RIOT_REFRESH_SEED_RIOT_IDS))
+    .map((value) => {
+      const separator = value.includes("#") ? "#" : value.includes(":") ? ":" : null;
+
+      if (!separator) {
+        throw new Error("RIOT_REFRESH_RIOT_IDS entries must use GameName#TagLine or GameName:TagLine.");
+      }
+
+      const [gameName, tagLine] = value.split(separator).map((entry) => entry.trim());
+
+      if (!gameName || !tagLine) {
+        throw new Error("RIOT_REFRESH_RIOT_IDS entries must include both gameName and tagLine.");
+      }
+
+      return { gameName, tagLine };
+    });
 }
 
 function uniqueNumbers(values: number[]) {
@@ -58,8 +85,37 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function dailyMatchIngestionOptions(modes: AggregationPipelineMode[]): AggregationPipelineMatchIngestionOptions {
-  const puuids = parseSeedPuuids();
+type RefreshSeedResolution = {
+  puuids: string[];
+  directPuuidCount: number;
+  riotIdSeedCount: number;
+  resolvedRiotIdSeedCount: number;
+};
+
+async function resolveRefreshSeedPuuids(logger: Logger): Promise<RefreshSeedResolution> {
+  const directPuuids = parseSeedPuuids();
+  const riotIds = parseSeedRiotIds();
+  const resolvedPuuids: string[] = [];
+
+  for (const riotId of riotIds) {
+    const account = await getRiotAccountByRiotId(riotId);
+
+    resolvedPuuids.push(account.puuid);
+    logger.info("Resolved Riot ID seed account for refresh discovery.", {
+      gameName: account.gameName,
+      tagLine: account.tagLine
+    });
+  }
+
+  return {
+    puuids: uniqueStrings([...directPuuids, ...resolvedPuuids]),
+    directPuuidCount: directPuuids.length,
+    riotIdSeedCount: riotIds.length,
+    resolvedRiotIdSeedCount: resolvedPuuids.length
+  };
+}
+
+function dailyMatchIngestionOptions(modes: AggregationPipelineMode[], puuids: string[]): AggregationPipelineMatchIngestionOptions {
   const count = Math.min(parsePositiveInteger("RIOT_REFRESH_MATCH_COUNT", process.env.RIOT_REFRESH_MATCH_COUNT, 50), 100);
   const pageCount = parsePositiveInteger("RIOT_REFRESH_MATCH_PAGES", process.env.RIOT_REFRESH_MATCH_PAGES, 3);
   const lookbackHours = parsePositiveInteger("RIOT_REFRESH_LOOKBACK_HOURS", process.env.RIOT_REFRESH_LOOKBACK_HOURS, 24);
@@ -74,6 +130,10 @@ function dailyMatchIngestionOptions(modes: AggregationPipelineMode[]): Aggregati
 
   if (!targetQueueIds.length) {
     throw new Error("Daily refresh requires at least one target Riot queue ID.");
+  }
+
+  if (!puuids.length) {
+    throw new Error("Daily refresh requires at least one seed in RIOT_REFRESH_PUUIDS or RIOT_REFRESH_RIOT_IDS.");
   }
 
   return {
@@ -107,11 +167,14 @@ export class ScheduledRefreshService {
     const patch = await this.resolvePatch(input);
     const modes = input.modes?.length ? input.modes : undefined;
     const resolvedModes = modes ?? ["arena", "aram_mayhem"];
-    const seedPuuids = parseSeedPuuids();
+    const seeds = await resolveRefreshSeedPuuids(this.logger);
 
-    this.logger.info("Loaded RIOT_REFRESH_PUUIDS for daily refresh.", {
-      seedPuuidCount: seedPuuids.length,
-      seedPuuids: seedPuuids.join(","),
+    this.logger.info("Loaded refresh seed players for daily refresh.", {
+      seedPuuidCount: seeds.puuids.length,
+      directPuuidCount: seeds.directPuuidCount,
+      riotIdSeedCount: seeds.riotIdSeedCount,
+      resolvedRiotIdSeedCount: seeds.resolvedRiotIdSeedCount,
+      seedPuuids: seeds.puuids.join(","),
       modes: resolvedModes.join(","),
       matchCountPerPage: Math.min(parsePositiveInteger("RIOT_REFRESH_MATCH_COUNT", process.env.RIOT_REFRESH_MATCH_COUNT, 50), 100),
       matchPageCount: parsePositiveInteger("RIOT_REFRESH_MATCH_PAGES", process.env.RIOT_REFRESH_MATCH_PAGES, 3),
@@ -123,7 +186,7 @@ export class ScheduledRefreshService {
       patchId: patch.id,
       modes,
       jobId: `daily-refresh:${patch.id}:${todayKey()}`,
-      matchIngestion: input.matchIngestion ?? dailyMatchIngestionOptions(resolvedModes)
+      matchIngestion: input.matchIngestion ?? dailyMatchIngestionOptions(resolvedModes, seeds.puuids)
     });
   }
 

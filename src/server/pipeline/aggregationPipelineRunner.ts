@@ -35,6 +35,7 @@ import type {
 import type { DbIngestionJobStatus, JsonValue } from "@/types/database";
 
 const DEFAULT_PIPELINE_MODES: AggregationPipelineMode[] = ["arena", "aram_mayhem"];
+const ARENA_QUEUE_ID = 1750;
 
 export class AggregationPipelineAlreadyRunningError extends Error {
   constructor(jobId: string) {
@@ -74,6 +75,33 @@ function countNumbers(values: number[]) {
 
 function uniqueDiscoveryPuuids(sources: AggregationPipelineMatchDiscoverySource[] = []) {
   return uniqueValues(sources.map((source) => source.puuid));
+}
+
+function createPerSeedDiscoveryStats({
+  discoveryResults,
+  duplicateMatchIdSet,
+  matchIdsToPersist
+}: {
+  discoveryResults: MatchIngestionPipelineResult["discoveryResults"];
+  duplicateMatchIdSet: Set<string>;
+  matchIdsToPersist: string[];
+}) {
+  const persistMatchIdSet = new Set(matchIdsToPersist);
+
+  return uniqueValues(discoveryResults.map((entry) => entry.puuid)).map((puuid) => {
+    const seedResults = discoveryResults.filter((entry) => entry.puuid === puuid);
+    const seedEligibleMatchIds = uniqueValues(seedResults.flatMap((entry) => entry.matchIds));
+
+    return {
+      puuid,
+      discoverySourceCount: seedResults.length,
+      unfilteredMatchIdsReturned: seedResults.reduce((sum, entry) => sum + entry.unfilteredMatchIds.length, 0),
+      eligibleMatchesFound: seedEligibleMatchIds.length,
+      arenaMatchesFound: seedResults.reduce((sum, entry) => sum + entry.eligibleQueueIds.filter((queueId) => queueId === ARENA_QUEUE_ID).length, 0),
+      duplicateMatchesSkipped: seedEligibleMatchIds.filter((riotMatchId) => duplicateMatchIdSet.has(riotMatchId)).length,
+      matchesQueuedForPersistence: seedEligibleMatchIds.filter((riotMatchId) => persistMatchIdSet.has(riotMatchId)).length
+    };
+  });
 }
 
 function pipelineJobId(patchId: string) {
@@ -377,12 +405,18 @@ export class AggregationPipelineRunner {
         ...(input.matchIngestion?.matchIds ?? []),
         ...discoveredMatchIds
       ]);
-      const limitedMatchIds = typeof input.matchIngestion?.maxMatches === "number"
-        ? requestedMatchIds.slice(0, input.matchIngestion.maxMatches)
-        : requestedMatchIds;
-      const duplicateMatchIds = await this.matchPersistenceRepository.findExistingRiotMatchIds(limitedMatchIds);
+      const duplicateMatchIds = await this.matchPersistenceRepository.findExistingRiotMatchIds(requestedMatchIds);
       const duplicateMatchIdSet = new Set(duplicateMatchIds);
-      const matchIdsToPersist = limitedMatchIds.filter((riotMatchId) => !duplicateMatchIdSet.has(riotMatchId));
+      const newMatchIds = requestedMatchIds.filter((riotMatchId) => !duplicateMatchIdSet.has(riotMatchId));
+      const matchIdsToPersist = typeof input.matchIngestion?.maxMatches === "number"
+        ? newMatchIds.slice(0, input.matchIngestion.maxMatches)
+        : newMatchIds;
+      const maxMatchesSkipped = Math.max(newMatchIds.length - matchIdsToPersist.length, 0);
+      const perSeedDiscoveryStats = createPerSeedDiscoveryStats({
+        discoveryResults,
+        duplicateMatchIdSet,
+        matchIdsToPersist
+      });
       const persistedMatches = [];
       const failedMatches: MatchIngestionPipelineResult["failedMatches"] = [];
       const skippedMatches: MatchIngestionPipelineResult["debug"]["skippedMatches"] = [];
@@ -395,7 +429,7 @@ export class AggregationPipelineRunner {
         });
       });
 
-      if (!limitedMatchIds.length) {
+      if (!requestedMatchIds.length) {
         const reason = discoverySources.length
           ? "Unfiltered Match-V5 discovery returned no eligible matches after local queueId filtering."
           : "No match ingestion discovery sources or explicit match IDs were provided. Use kind=daily or provide matchIngestion.matchIds.";
@@ -419,10 +453,21 @@ export class AggregationPipelineRunner {
         patchId,
         matchesDiscoveredBeforeQueueFiltering: discoveryResults.reduce((sum, entry) => sum + entry.unfilteredMatchIds.length, 0),
         matchesAfterLocalQueueFiltering: requestedMatchIds.length,
+        arenaMatchesFound: discoveryResults.reduce((sum, entry) => sum + entry.eligibleQueueIds.filter((queueId) => queueId === ARENA_QUEUE_ID).length, 0),
         eligibleQueueIdsAfterLocalFilter: countNumbers(discoveryResults.flatMap((entry) => entry.eligibleQueueIds)),
         maxMatchesApplied: input.matchIngestion?.maxMatches ?? null,
         duplicateMatchesSkipped: duplicateMatchIds.length,
+        newMatchesAfterDuplicateFilter: newMatchIds.length,
+        maxMatchesSkipped,
         matchesQueuedForPersistence: matchIdsToPersist.length
+      });
+
+      perSeedDiscoveryStats.forEach((stats) => {
+        this.logger.info("Refresh discovery seed stats.", {
+          parentJobId,
+          patchId,
+          ...stats
+        });
       });
 
       for (const riotMatchId of matchIdsToPersist) {
@@ -483,7 +528,17 @@ export class AggregationPipelineRunner {
             participantsPersisted: entry.participantsPersisted
           })),
           skippedMatches,
-          duplicateMatchesSkipped: duplicateMatchIds
+          duplicateMatchesSkipped: duplicateMatchIds,
+          perSeedDiscoveryStats,
+          diagnostics: {
+            seedCount: seedPuuids.length,
+            matchesDiscovered: discoveryResults.reduce((sum, entry) => sum + entry.unfilteredMatchIds.length, 0),
+            eligibleMatchesFound: requestedMatchIds.length,
+            arenaMatchesFound: discoveryResults.reduce((sum, entry) => sum + entry.eligibleQueueIds.filter((queueId) => queueId === ARENA_QUEUE_ID).length, 0),
+            duplicateMatchesSkipped: duplicateMatchIds.length,
+            matchesInserted: persistedMatches.length,
+            participantsInserted: participantsPersisted
+          }
         },
         matchIdsDiscovered: discoveredMatchIds.length,
         matchIdsRequested: requestedMatchIds.length,

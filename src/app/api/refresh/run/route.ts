@@ -20,7 +20,14 @@ type RefreshRunRequestBody = RefreshRunInput & {
 
 function readRefreshPuuids() {
   return (process.env.RIOT_REFRESH_PUUIDS ?? "")
-    .split(",")
+    .split(/[\n,;]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function readRefreshRiotIds() {
+  return (process.env.RIOT_REFRESH_RIOT_IDS ?? process.env.RIOT_REFRESH_SEED_RIOT_IDS ?? "")
+    .split(/[\n,;]+/)
     .map((value) => value.trim())
     .filter(Boolean);
 }
@@ -34,7 +41,9 @@ function requestedKind(body: Partial<RefreshRunRequestBody>) {
 function createRunDebug(body: Partial<RefreshRunRequestBody>, result: RefreshRunResult) {
   const kind = requestedKind(body);
   const riotRefreshPuuids = readRefreshPuuids();
+  const riotRefreshRiotIds = readRefreshRiotIds();
   const queueConfig = getDefaultMatchNormalizationOptions();
+  const diagnostics = result.result.matchIngestion.debug.diagnostics;
 
   return {
     requestedKind: kind,
@@ -43,7 +52,9 @@ function createRunDebug(body: Partial<RefreshRunRequestBody>, result: RefreshRun
       : null,
     environment: {
       riotRefreshPuuidCount: riotRefreshPuuids.length,
+      riotRefreshRiotIdCount: riotRefreshRiotIds.length,
       riotRefreshPuuids,
+      riotRefreshRiotIds,
       riotRefreshMatchCount: process.env.RIOT_REFRESH_MATCH_COUNT ?? "50",
       riotRefreshMatchPages: process.env.RIOT_REFRESH_MATCH_PAGES ?? "3",
       riotRefreshLookbackHours: process.env.RIOT_REFRESH_LOOKBACK_HOURS ?? "24",
@@ -53,6 +64,7 @@ function createRunDebug(body: Partial<RefreshRunRequestBody>, result: RefreshRun
       aramMayhemQueueId: queueConfig.aramMayhemQueueId,
       aramMayhemQueueIds: queueConfig.aramMayhemQueueIds
     },
+    diagnostics,
     matchIngestion: result.result.matchIngestion.debug
   };
 }

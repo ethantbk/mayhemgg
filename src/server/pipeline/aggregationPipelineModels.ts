@@ -78,6 +78,24 @@ export type MatchIngestionPipelineResult = {
       error?: string;
     }>;
     duplicateMatchesSkipped: string[];
+    perSeedDiscoveryStats: Array<{
+      puuid: string;
+      discoverySourceCount: number;
+      unfilteredMatchIdsReturned: number;
+      eligibleMatchesFound: number;
+      arenaMatchesFound: number;
+      duplicateMatchesSkipped: number;
+      matchesQueuedForPersistence: number;
+    }>;
+    diagnostics: {
+      seedCount: number;
+      matchesDiscovered: number;
+      eligibleMatchesFound: number;
+      arenaMatchesFound: number;
+      duplicateMatchesSkipped: number;
+      matchesInserted: number;
+      participantsInserted: number;
+    };
   };
   matchIdsDiscovered: number;
   matchIdsRequested: number;
